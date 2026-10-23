@@ -43,10 +43,21 @@ function requireClub(req, res) {
   return p
 }
 
-// 公开：社团列表
+// 公开：社团列表（F5 规则排序：招新中优先，其中截止临近优先、无截止最后；非招新保持原序）
 router.get('/', (req, res) => {
   const { clubs } = loadClubs()
-  res.json({ clubs: clubs.map(publicClub) })
+  const sorted = [...clubs].sort((a, b) => {
+    const ao = a.status === 'open' ? 0 : 1
+    const bo = b.status === 'open' ? 0 : 1
+    if (ao !== bo) return ao - bo
+    if (ao === 0) {
+      const aEnd = a.endAt ? +a.endAt : Infinity
+      const bEnd = b.endAt ? +b.endAt : Infinity
+      if (aEnd !== bEnd) return aEnd - bEnd
+    }
+    return 0
+  })
+  res.json({ clubs: sorted.map(publicClub) })
 })
 
 // 公开：社团详情（浏览量走事件流口径，不再在这里 +1 写盘）

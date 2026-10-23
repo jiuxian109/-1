@@ -353,6 +353,16 @@ img { display: block; max-width: 100%; }
 .mem-club { font-weight: 700; font-size: 15px; }
 .mem-role { flex: 1; font-size: 13px; color: var(--muted); }
 
+/* ============ 站内通知横幅（Q7） ============ */
+.notify-banner {
+  display: block; width: 100%; max-width: var(--shell); margin: 0 auto;
+  padding: 11px 16px; background: #FFF7E6; color: var(--warn);
+  border: 1px solid #F2DEB4; border-top: none; border-left: none; border-right: none;
+  font-size: 14px; font-weight: 600; text-align: left; cursor: pointer;
+}
+.drop-enter-active, .drop-leave-active { transition: opacity .25s, transform .25s; }
+.drop-enter-from, .drop-leave-to { opacity: 0; transform: translateY(-8px); }
+
 /* ============ reduced-motion ============ */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

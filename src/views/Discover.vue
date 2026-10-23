@@ -9,12 +9,22 @@ const q = ref('')
 const loading = ref(true)
 const err = ref('')
 
+// F5 规则排序：招新中优先、截止临近优先、无截止最后；非招新保持传入顺序（列表已按此排序，筛选后再排防缓存旧序）
+function rank(c) {
+  if (c.status !== 'open') return [1, 0]
+  return [0, c.endAt ? +c.endAt : Infinity]
+}
 const filtered = computed(() => {
   const kw = q.value.trim()
   return state.clubs.filter((c) => {
     const okCat = cat.value === '全部' || c.category === cat.value
     const okKw = !kw || c.name.includes(kw) || c.intro.includes(kw)
     return okCat && okKw
+  }).sort((a, b) => {
+    const ra = rank(a)
+    const rb = rank(b)
+    if (ra[0] !== rb[0]) return ra[0] - rb[0]
+    return ra[1] - rb[1]
   })
 })
 

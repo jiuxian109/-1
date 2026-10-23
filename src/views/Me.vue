@@ -1,13 +1,20 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useClubs } from '../store/clubs'
 
 const router = useRouter()
-const { state, logout, toast, MEMBER_STATUS } = useClubs()
+const { state, logout, toast, MEMBER_STATUS, fetchMySignups } = useClubs()
 
 const user = computed(() => state.user)
 const memberships = computed(() => (state.user && state.user.memberships) || [])
+const pendingSignups = computed(() =>
+  (state.mySignups || []).filter((s) => s.status === 'pending').length
+)
+
+onMounted(() => {
+  if (state.user && state.user.role === 'student') fetchMySignups().catch(() => {})
+})
 
 function signOut() {
   logout()
@@ -45,7 +52,10 @@ function signOut() {
       </div>
       <div class="section-title">我的报名</div>
       <div class="quick">
-        <router-link to="/my-signups">查看报名与处理进度</router-link>
+        <router-link to="/my-signups">
+          查看报名与处理进度
+          <span v-if="pendingSignups" class="red-dot">{{ pendingSignups }}</span>
+        </router-link>
       </div>
       <div class="section-title">逛逛社团</div>
       <div class="quick">
