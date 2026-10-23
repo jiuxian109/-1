@@ -55,7 +55,7 @@ npm start        # = npm run build && npm run server，访问 http://127.0.0.1:3
 | 二者 | `#/messages` | 站内私信（Q1）：学生 ↔ 社团一对一对话（会话列表 / 气泡 / 未读消除）；学生可从社团主页、社团可从报名名单进入 |
 | 公开 | `#/club/:id` | 社团主页：顶部背景图（有图时）或封面插画、简介、按月份分组的「活动年册」、报名入口 |
 | 公开 | `#/login` · `#/register` | 登录 / 注册（注册可选学生或社团） |
-| 学生 | `#/signup/:id` | 报名表单（姓名/学号/手机号/微信/一句话 + 同意勾选），需登录；展示报名截止与剩余名额 |
+| 学生 | `#/signup/:id` | 报名表单（姓名/专业/学号/手机号/微信/一句话 + 同意勾选，专业必填），需登录；展示报名截止与剩余名额 |
 | 学生 | `#/my-signups` | 我的报名：全部报名记录（状态徽章/拒绝原因/等待提醒）+ 退出报名确认弹窗 |
 | 学生 | `#/success/:id?row=N` | 报名成功：花名册第 N 行（手机号脱敏） |
 | 二者 | `#/me` | 「我的」：身份卡 + 学生「我的报名」入口 / 社团工作台入口 + 退出 |
@@ -78,13 +78,13 @@ npm start        # = npm run build && npm run server，访问 http://127.0.0.1:3
 | GET | `/api/auth/me/signups` | 学生 | 我的报名：本人全部报名记录（`clubId/clubName/status/rejectReason/ageDays`，按时间倒序），读取触发超时结算 |
 | GET | `/api/clubs` | — | 社团列表（带 `pendingCount` 待办数、`quota/endAt/signupActive` 名额与截止信息） |
 | GET | `/api/clubs/:id` | — | 社团详情（浏览不再落库，全走埋点事件流；带名额与截止） |
-| POST | `/api/clubs/:id/signup` | 学生 | 报名，返回 `{ row }` 名册行号；仅招新中(`status=open`)可报、截止后 409「报名已截止」、满员 409「名额已满」、按人/社去重、新报名为 `pending` |
+| POST | `/api/clubs/:id/signup` | 学生 | 报名，返回 `{ row }` 名册行号；姓名/专业/学号/手机号/微信必填，仅招新中(`status=open`)可报、截止后 409「报名已截止」、满员 409「名额已满」、按人/社去重、新报名为 `pending` |
 | POST | `/api/clubs/:id/signup/withdraw` | 学生 | 退出报名（申请-确认）：行置 `withdrawn`，已退出/已被拒绝 409；名额随之释放 |
 | PUT | `/api/clubs/:id` | 社团（须本人） | 更新主页 + 报名名额 `quota`（0=不限，1–9999 整数）与截止 `endAt`（毫秒时间戳，留空不限；含 `bg` 背景图路径，非 `/uploads/*` 会被清空） |
 | POST | `/api/clubs/:id/activities` | 社团（须本人） | 发布活动（`intro` ≤120 字、`photos` 为 `/uploads/*` 路径数组、最多 9 张） |
 | POST | `/api/uploads` | 社团 | 上传图片（活动照片 / 主页背景图通用）：`{ data: dataURL }` → `{ url }`（仅 jpeg/png/webp，单张 ≤4MB） |
 | GET | `/uploads/:file` | — | 图片静态访问 |
-| GET | `/api/clubs/:id/roster` | 社团（须本人） | 报名名单 `{ roster, counts }`：行含 `id/status/ageDays/red`，读取即触发超时自动拒绝 |
+| GET | `/api/clubs/:id/roster` | 社团（须本人） | 报名名单 `{ roster, counts }`：行含 `id/name/major/sid/phone/wechat/status/ageDays/red`，读取即触发超时自动拒绝 |
 | POST | `/api/clubs/:id/roster/decide` | 社团（须本人） | 处理报名 `{ ids, action: accept\|reject, reasonKey?\|reason? }`；拒绝必填原因（3 预设 + 自定义≤30 字），已处理行 409 |
 | GET | `/api/clubs/:id/members` | 社团（须本人） | 成员名册；支持 `?q=&status=&dept=`，返回 `{ members, depts, counts }` |
 | POST | `/api/clubs/:id/members` | 社团（须本人） | 手动新增成员（`name` + `phone` 必填，手机号社团内唯一） |
@@ -94,7 +94,7 @@ npm start        # = npm run build && npm run server，访问 http://127.0.0.1:3
 | DELETE | `/api/clubs/:id/members/:mid` | 社团（须本人） | 移出成员（软删：`status=quit`，记录保留） |
 | PUT | `/api/clubs/:id/depts` | 社团（须本人） | 保存部门字典：`{ depts, renames:[{ from, to }] }`，删除的部门成员落「未分配」 |
 | GET | `/api/clubs/:id/stats` | 社团（须本人） | 报名漏斗：进主页/点报名/提交 + 回执质量（`receipt.total/processed/rate/medianHours`，Q2 面板） |
-| GET | `/api/messages` | 任意登录 | 私信会话列表：学生看自己与各社团，社团看自己与各学生（含对方名/最后一条/时间） |
+| GET | `/api/messages` | 任意登录 | 私信会话列表：学生看自己与各社团（含社团名），社团看自己与各学生（含学生姓名/最后一条/时间） |
 | POST | `/api/messages` | 任意登录 | 发私信：学生 `{ clubId, text }`、社团 `{ studentId, text }`（≤200 字）；自动建会话 |
 | GET | `/api/messages/msgs` | 任意登录 | 单会话消息：学生 `?clubId=`、社团 `?clubId=&studentId=` |
 | POST | `/api/messages/read` | 任意登录 | 标记对方消息已读 |
@@ -118,8 +118,8 @@ npm start        # = npm run build && npm run server，访问 http://127.0.0.1:3
 ## 数据与埋点
 
 - 持久层：`server/data/users.json` · `clubs.json` · `events.json` · `messages.json`（原子写：tmp + rename）；`upkeep` 每天备份到 `server/data/backups/YYYY-MM-DD/`（当日一份、保留 14 天），并清理 30 天未被引用且超龄的上传图片
-- 成员名册存在社团对象里：`clubs[].depts`（部门字典）+ `clubs[].members[]`（`name/phone/sid/wechat/dept/role/status/joinedAt/userId`）
-- 报名流水 `roster[]` 与名册分开，报名者需手动「加入名册」；每行带 `status`（`pending` 待处理 / `accepted` 已通过 / `rejected` 已拒绝 / `withdrawn` 已撤回），读取名单时自动把超过 10 天的 `pending` 置为 `rejected`（固定原因「社团超时未处理」），≥3 天未处理给社团标红提醒
+- 成员名册存在社团对象里：`clubs[].depts`（部门字典）+ `clubs[].members[]`（`name/phone/sid/wechat/major/dept/role/status/joinedAt/userId`）
+- 报名流水 `roster[]` 与名册分开，报名者需手动「加入名册」；每行带 `name/major/sid/phone/wechat`（姓名/专业/学号/手机号/微信必填）与 `status`（`pending` 待处理 / `accepted` 已通过 / `rejected` 已拒绝 / `withdrawn` 已撤回），读取名单时自动把超过 10 天的 `pending` 置为 `rejected`（固定原因「社团超时未处理」），≥3 天未处理给社团标红提醒
 - 名额与截止：社团可设 `quota`（0=不限）与 `endAt`（毫秒时间戳，空=不限）；名额按「待处理 + 已通过」占坑，`rejected/withdrawn` 释放名额；截止后新报名拒绝；学生可退出报名（申请 → 确认弹窗 → 置 `withdrawn`）
 - F5 规则排序：发现页与分类/搜索筛选后都按 —— 招新中优先；招新中内报名截止更近者在前；无截止排最后（按报名截止时间升序，`null/空` 当无穷大）；未招新社团保持入库顺序。前后端同一规则。
 - Q7 站内通知：登录首屏横幅（学生有 `pending` → 「你有 N 条报名等待社团处理」；最近 1 小时内有报名结果变化 → 提示查看），点横幅进「我的报名」；「我的」页报名入口带红点计数
@@ -184,6 +184,7 @@ c/
 - 规则排序与站内通知（P3）11 条 API 断言 + 6 条 UI 冒烟全部通过：open 优先/临近截止优先/无截止最后/规则变化后位置随之变化/分类筛选叠加、学生登录首屏横幅「你有 1 条报名等待社团处理」、「我的」页红点计数
 - 站内私信与回执面板（P4）15 条 API 断言 + 6 条 UI 冒烟全部通过：学生发起/社团回复、超长与空消息 400、双方会话列表（含对方名）、单会话拉取、已读标记、匿名 401、回执面板总数/已处理/回执率/处理中位时长
 - 注册体验升级 8 条 API 断言 + 4 条 UI 冒烟全部通过：学生缺姓名 400、带姓名+头像注册成功且头像落盘可访问、无头像注册 avatar 为空、非图片格式 400、社团注册不受姓名必填影响、注册后新密码可登录；注册页含确认密码框、「姓名（必填）」标注、头像选择控件
+- 报名专业与私信姓名 8 条 API 断言 + 3 条 UI 冒烟全部通过：缺专业 400、带专业报名成功且名册行/导入成员带 `major`、社团侧会话列表与单会话显示学生姓名、学生侧显示社团名；报名页专业输入框、私信会话列表与对话头部均显示学生姓名
 
 - 后端 24 条端到端断言全部通过（注册 / 登录 / 鉴权 / 报名 / 名单 / 统计 / 埋点）
 - 活动照片与简介 15 条断言全部通过（上传落盘、静态访问、非图片拒绝、路径过滤、9 张截断、简介超长拒绝、学生/匿名上传 403/401）

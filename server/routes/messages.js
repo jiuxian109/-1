@@ -28,7 +28,7 @@ router.get('/', (req, res) => {
     const stu = users.find((u) => u.id === t.studentId)
     const last = t.msgs[t.msgs.length - 1] || null
     const clubName = club ? club.name : (t.meta?.clubName || '未知社团')
-    const stuName = stu?.studentName || stu?.name || ''
+    const stuName = stu?.name || t.meta?.stuName || ''
     return {
       id: t.id,
       clubId: t.clubId,
@@ -117,7 +117,16 @@ router.get('/msgs', (req, res) => {
     if (!clubId || !studentId) return res.status(400).json({ error: '缺少对象' })
     t = threads.find((x) => x.clubId === clubId && x.studentId === studentId)
   } else return res.status(403).json({ error: '账号类型无法查看私信' })
-  res.json({ msgs: t ? t.msgs : [], clubName: req.query.clubName || '' })
+  // 补齐双方显示名（入会话后也可直接重新刷新出姓名）
+  let clubName = ''
+  let stuName = ''
+  if (t) {
+    const club = loadClubs().clubs.find((c) => c.id === t.clubId)
+    const stu = loadUsers().find((u) => u.id === t.studentId)
+    clubName = club ? club.name : (t.meta?.clubName || '')
+    stuName = stu?.name || t.meta?.stuName || ''
+  }
+  res.json({ msgs: t ? t.msgs : [], clubName, stuName })
 })
 
 export default router

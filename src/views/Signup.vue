@@ -9,7 +9,7 @@ const { state, fetchClub, signup } = useClubs()
 
 const loading = ref(true)
 const err = ref('')
-const form = reactive({ name: '', sid: '', phone: '', wechat: '', why: '' })
+const form = reactive({ name: '', sid: '', phone: '', wechat: '', major: '', why: '' })
 const agree = ref(false)
 const submitErr = ref('')
 const busy = ref(false)
@@ -42,7 +42,7 @@ function fmtDeadline(ms) {
 
 async function submit() {
   if (!club.value) return
-  if (!form.name || !form.sid || !form.phone || !form.wechat) { submitErr.value = '请填写所有必填项'; return }
+  if (!form.name || !form.sid || !form.phone || !form.wechat || !form.major) { submitErr.value = '请填写所有必填项'; return }
   if (!/^1\d{10}$/.test(form.phone)) { submitErr.value = '请输入 11 位手机号'; return }
   if (!agree.value) { submitErr.value = '请先勾选同意'; return }
   busy.value = true
@@ -78,6 +78,10 @@ async function submit() {
         <div class="field">
           <label for="f-sid">学号</label>
           <input id="f-sid" v-model="form.sid" placeholder="如 2025010101" />
+        </div>
+        <div class="field">
+          <label for="f-major">专业</label>
+          <input id="f-major" v-model="form.major" placeholder="如 计算机科学与技术" maxlength="30" />
         </div>
         <div class="field">
           <label for="f-phone">手机号</label>

@@ -19,8 +19,11 @@ const otherName = computed(() => {
 
 async function openThread(t) {
   selected.value = t
-  await fetchThread(t.clubId, t.studentId)
+  const d = await fetchThread(t.clubId, t.studentId)
   msgs.value = state.thread.msgs || []
+  // 服务端补齐姓名后刷新头部显示
+  if (d.stuName) selected.value = { ...selected.value, stuName: d.stuName }
+  if (d.clubName) selected.value = { ...selected.value, clubName: d.clubName }
   await markRead({ clubId: t.clubId, studentId: t.studentId })
   await fetchThreads()
   await nextTick()

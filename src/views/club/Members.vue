@@ -296,7 +296,7 @@ function exportCsv() {
               <span class="m-tag" :class="'st-' + m.status">{{ MEMBER_STATUS[m.status] }}</span>
             </div>
             <div class="m-meta">{{ m.role || '成员' }}<template v-if="m.dept"> · {{ m.dept }}</template> · {{ m.phone }}</div>
-            <div class="m-meta" v-if="m.sid || m.wechat">学号 {{ m.sid || '—' }} · 微信 {{ m.wechat || '—' }}</div>
+            <div class="m-meta" v-if="m.sid || m.wechat || m.major">专业 {{ m.major || '—' }} · 学号 {{ m.sid || '—' }} · 微信 {{ m.wechat || '—' }}</div>
           </div>
           <button type="button" class="m-more" @click="startEdit(m)">{{ openId === m.id ? '收起' : '编辑' }}</button>
         </div>

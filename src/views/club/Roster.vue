@@ -149,7 +149,7 @@ const ageText = (r) => (r.ageDays <= 0 ? '今天' : r.ageDays + ' 天前')
             </span>
             <span v-if="r.red" class="red-tag">已 {{ r.ageDays }} 天，请尽快处理</span>
           </div>
-          <span>学号 {{ r.sid }} · 手机 {{ r.phone }} · 微信 {{ r.wechat }}</span>
+          <span>专业 {{ r.major || '—' }} · 学号 {{ r.sid }} · 手机 {{ r.phone }} · 微信 {{ r.wechat }}</span>
           <div v-if="r.why" class="why">「{{ r.why }}」</div>
           <div v-if="r.status === 'rejected'" class="why red-text">拒绝原因：{{ r.rejectReason || '—' }}</div>
 

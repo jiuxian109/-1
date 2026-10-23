@@ -48,9 +48,9 @@ function maskPhone(p) {
 }
 
 function downloadCSV(roster, clubName) {
-  const rows = ['\uFEFF姓名,学号,手机号,微信号,报名理由,状态']
+  const rows = ['\uFEFF姓名,专业,学号,手机号,微信号,报名理由,状态']
   roster.forEach((r) => {
-    const cells = [r.name, r.sid, r.phone, r.wechat, (r.why || '').replace(/,/g, '，'), SIGNUP_STATUS[r.status] || r.status || '']
+    const cells = [r.name, r.major || '', r.sid, r.phone, r.wechat, (r.why || '').replace(/,/g, '，'), SIGNUP_STATUS[r.status] || r.status || '']
     rows.push(cells.map((f) => '"' + String(f) + '"').join(','))
   })
   const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8' })
@@ -73,10 +73,10 @@ function fmtDate(ts) {
 
 // 导出成员名册（含部门/职务/状态/加入时间）
 function downloadMemberCSV(members, clubName) {
-  const rows = ['\uFEFF姓名,学号,手机号,微信号,部门,职务,状态,加入时间,备注']
+  const rows = ['\uFEFF姓名,专业,学号,手机号,微信号,部门,职务,状态,加入时间,备注']
   members.forEach((m) => {
     const cells = [
-      m.name, m.sid, m.phone, m.wechat, m.dept || '未分配',
+      m.name, m.major || '', m.sid, m.phone, m.wechat, m.dept || '未分配',
       m.role || '成员', MEMBER_STATUS[m.status] || m.status, fmtDate(m.joinedAt),
       (m.note || '').replace(/,/g, '，')
     ]

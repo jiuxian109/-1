@@ -72,8 +72,8 @@ router.post('/:id/signup', async (req, res) => {
   const p = auth(req, res)
   if (!p) return
   if (p.role !== 'student') return res.status(403).json({ error: '仅学生账号可以报名' })
-  const { name, sid, phone, wechat, why } = req.body || {}
-  if (!name || !sid || !phone || !wechat) return res.status(400).json({ error: '请填写所有必填项' })
+  const { name, sid, phone, wechat, major, why } = req.body || {}
+  if (!name || !sid || !phone || !wechat || !major) return res.status(400).json({ error: '请填写所有必填项' })
   if (!/^1\d{10}$/.test(String(phone))) return res.status(400).json({ error: '请输入 11 位手机号' })
   try {
     const { row } = await updateClubs((data) => {
@@ -93,7 +93,7 @@ router.post('/:id/signup', async (req, res) => {
       }
       c.roster.push({
         id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-        name, sid, phone: String(phone), wechat, why: why || '',
+        name, sid, phone: String(phone), wechat, major: String(major).trim(), why: why || '',
         userId: p.uid, status: 'pending', t: Date.now()
       })
       return { row: c.roster.length }
