@@ -7,6 +7,7 @@ import clubRoutes from './routes/clubs.js'
 import memberRoutes from './routes/members.js'
 import eventRoutes from './routes/events.js'
 import uploadRoutes from './routes/uploads.js'
+import messageRoutes from './routes/messages.js'
 import { startUpkeep } from './upkeep.js'
 
 // 启动即执行一次维护（当日备份 + 上传回收），此后每 24h 一次
@@ -27,6 +28,7 @@ app.use('/api/clubs', memberRoutes) // /:id/members*、/:id/depts
 app.use('/api/clubs', clubRoutes)
 app.use('/api/events', eventRoutes)
 app.use('/api/uploads', uploadRoutes)
+app.use('/api/messages', messageRoutes)
 app.get('/api/health', (req, res) => res.json({ ok: true }))
 
 // 生产模式：托管活动照片与前端 build 产物（hash 路由，无需 SPA 回退）

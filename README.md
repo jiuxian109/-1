@@ -52,6 +52,7 @@ npm start        # = npm run build && npm run server，访问 http://127.0.0.1:3
 | --- | --- | --- |
 | 公开 | `#/` | 发现页：搜索 + 分类筛选 + 社团卡片流（规则排序：招新中优先 → 报名截止临近优先 → 无截止在中 → 未招新按入库序） |
 | 三者 | App 顶部 | 站内通知横幅：学生有 `pending` 报名时提示待处理，最近 1h 内有处理结果提示去看结果，点击进「我的报名」 |
+| 二者 | `#/messages` | 站内私信（Q1）：学生 ↔ 社团一对一对话（会话列表 / 气泡 / 未读消除）；学生可从社团主页、社团可从报名名单进入 |
 | 公开 | `#/club/:id` | 社团主页：顶部背景图（有图时）或封面插画、简介、按月份分组的「活动年册」、报名入口 |
 | 公开 | `#/login` · `#/register` | 登录 / 注册（注册可选学生或社团） |
 | 学生 | `#/signup/:id` | 报名表单（姓名/学号/手机号/微信/一句话 + 同意勾选），需登录；展示报名截止与剩余名额 |
@@ -92,7 +93,11 @@ npm start        # = npm run build && npm run server，访问 http://127.0.0.1:3
 | PATCH | `/api/clubs/:id/members/:mid` | 社团（须本人） | 改单个成员（部门/职务/状态/备注），`status=active` 即可恢复 |
 | DELETE | `/api/clubs/:id/members/:mid` | 社团（须本人） | 移出成员（软删：`status=quit`，记录保留） |
 | PUT | `/api/clubs/:id/depts` | 社团（须本人） | 保存部门字典：`{ depts, renames:[{ from, to }] }`，删除的部门成员落「未分配」 |
-| GET | `/api/clubs/:id/stats` | 社团（须本人） | 报名漏斗：进主页/点报名/提交 |
+| GET | `/api/clubs/:id/stats` | 社团（须本人） | 报名漏斗：进主页/点报名/提交 + 回执质量（`receipt.total/processed/rate/medianHours`，Q2 面板） |
+| GET | `/api/messages` | 任意登录 | 私信会话列表：学生看自己与各社团，社团看自己与各学生（含对方名/最后一条/时间） |
+| POST | `/api/messages` | 任意登录 | 发私信：学生 `{ clubId, text }`、社团 `{ studentId, text }`（≤200 字）；自动建会话 |
+| GET | `/api/messages/msgs` | 任意登录 | 单会话消息：学生 `?clubId=`、社团 `?clubId=&studentId=` |
+| POST | `/api/messages/read` | 任意登录 | 标记对方消息已读 |
 | POST | `/api/events` | — | 埋点（impression / view_club / click_signup） |
 | GET | `/api/health` | — | 健康检查 |
 
@@ -112,12 +117,14 @@ npm start        # = npm run build && npm run server，访问 http://127.0.0.1:3
 
 ## 数据与埋点
 
-- 持久层：`server/data/users.json` · `clubs.json` · `events.json`（原子写：tmp + rename）；`upkeep` 每天备份到 `server/data/backups/YYYY-MM-DD/`（当日一份、保留 14 天），并清理 30 天未被引用且超龄的上传图片
+- 持久层：`server/data/users.json` · `clubs.json` · `events.json` · `messages.json`（原子写：tmp + rename）；`upkeep` 每天备份到 `server/data/backups/YYYY-MM-DD/`（当日一份、保留 14 天），并清理 30 天未被引用且超龄的上传图片
 - 成员名册存在社团对象里：`clubs[].depts`（部门字典）+ `clubs[].members[]`（`name/phone/sid/wechat/dept/role/status/joinedAt/userId`）
 - 报名流水 `roster[]` 与名册分开，报名者需手动「加入名册」；每行带 `status`（`pending` 待处理 / `accepted` 已通过 / `rejected` 已拒绝 / `withdrawn` 已撤回），读取名单时自动把超过 10 天的 `pending` 置为 `rejected`（固定原因「社团超时未处理」），≥3 天未处理给社团标红提醒
 - 名额与截止：社团可设 `quota`（0=不限）与 `endAt`（毫秒时间戳，空=不限）；名额按「待处理 + 已通过」占坑，`rejected/withdrawn` 释放名额；截止后新报名拒绝；学生可退出报名（申请 → 确认弹窗 → 置 `withdrawn`）
 - F5 规则排序：发现页与分类/搜索筛选后都按 —— 招新中优先；招新中内报名截止更近者在前；无截止排最后（按报名截止时间升序，`null/空` 当无穷大）；未招新社团保持入库顺序。前后端同一规则。
 - Q7 站内通知：登录首屏横幅（学生有 `pending` → 「你有 N 条报名等待社团处理」；最近 1 小时内有报名结果变化 → 提示查看），点横幅进「我的报名」；「我的」页报名入口带红点计数
+- Q1 站内私信：学生 ↔ 社团一对一对话，持久化在 `messages.json`（`threads[{id, clubId, studentId, msgs:[{from,text,t,read}]}]`）；发送即建会话、≤200 字、双方可把对方消息标记已读；入口：学生=社团主页「私信社团」，社团=报名名单行「私信」
+- Q2 回执质量：社团工作台面板展示报名总数/已处理/回执率（目标 ≥80% 绿色达标）/处理中位时长（目标 ≤48h 绿色达标），数据来自 `/stats` 的 `receipt` 计算（`reviewedAt - t` 中位数）
 - 成员状态：`active` 在册 / `pending` 预备 / `quit` 已退出（软删，可恢复）；学生端「我的」只展示未退出的身份
 - 图片：`server/uploads/`，由 `/api/uploads` 落盘、`/uploads/*` 静态访问；活动照片浏览器端先压到最长边 1600px，主页背景图压到 1920px（单张 ≤4MB）
 - 埋点 4 层：曝光 / 进主页 / 点报名 / 提交报名；曝光为卡片级（每社团每次进发现页最多计 1 次），浏览数不再落库（口径统一进事件流）；社团工作台可看「进主页 → 点报名 → 提交」漏斗
@@ -175,6 +182,7 @@ c/
 - 报名状态机 UI 冒烟 5/5 通过（无头浏览器）：工作台待办红点计数、名单页待处理/已通过 tab 计数与红标、行级拒绝弹窗（自定义原因）→ 已拒绝 tab 展示原因 → 待办数随之下降
 - 名额/截止/退出与我的报名（P2）18 条 API 断言 + 7 条 UI 冒烟全部通过：设名额 2+截止、第三名满员 409、退出释放名额可再报、重复退出 409、截止过期 409、我的报名列表（含社团名/状态）、未报名空数组、社团主查询 403、quota/endAt 非法 400、编辑页名额/截止预填、报名页展示截止与剩余名额、退出确认弹窗 → 已撤回
 - 规则排序与站内通知（P3）11 条 API 断言 + 6 条 UI 冒烟全部通过：open 优先/临近截止优先/无截止最后/规则变化后位置随之变化/分类筛选叠加、学生登录首屏横幅「你有 1 条报名等待社团处理」、「我的」页红点计数
+- 站内私信与回执面板（P4）15 条 API 断言 + 6 条 UI 冒烟全部通过：学生发起/社团回复、超长与空消息 400、双方会话列表（含对方名）、单会话拉取、已读标记、匿名 401、回执面板总数/已处理/回执率/处理中位时长
 
 - 后端 24 条端到端断言全部通过（注册 / 登录 / 鉴权 / 报名 / 名单 / 统计 / 埋点）
 - 活动照片与简介 15 条断言全部通过（上传落盘、静态访问、非图片拒绝、路径过滤、9 张截断、简介超长拒绝、学生/匿名上传 403/401）

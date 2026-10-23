@@ -17,6 +17,8 @@ export const state = reactive({
   memberCounts: { active: 0, pending: 0, quit: 0, total: 0 },
   lastSignup: null,
   mySignups: [],
+  messages: [],
+  thread: { msgs: [] },
   loading: false,
   toast: ''
 })
@@ -204,6 +206,32 @@ export function useClubs() {
 
     async fetchStats(id) {
       return api('/clubs/' + id + '/stats')
+    },
+
+    // ---- 站内私信（Q1）----
+    async fetchThreads() {
+      const d = await api('/messages')
+      state.messages = d.threads
+      return d.threads
+    },
+
+    async fetchThread(clubId, studentId) {
+      const qs = new URLSearchParams()
+      if (clubId) qs.set('clubId', clubId)
+      if (studentId) qs.set('studentId', studentId)
+      const d = await api('/messages/msgs?' + qs.toString())
+      state.thread = { ...d, clubId, studentId }
+      return d
+    },
+
+    async sendMessage(payload) {
+      const d = await api('/messages', { method: 'POST', body: payload })
+      state.thread.msgs = d.msgs
+      return d
+    },
+
+    async markRead(payload) {
+      return api('/messages/read', { method: 'POST', body: payload })
     },
 
     // ---- 成员名册（社团端） ----

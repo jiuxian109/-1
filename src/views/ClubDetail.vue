@@ -76,6 +76,11 @@ function join() {
       <p class="intro">{{ club.intro || '这个社团还没有写简介。' }}</p>
 
       <button v-if="club.status === 'open'" class="btn block" style="margin-top: 18px" @click="join">我要报名</button>
+      <button
+        v-if="state.user && state.user.role === 'student'"
+        class="btn ghost block" style="margin-top: 10px"
+        @click="router.push('/messages?club=' + club.id + '&name=' + encodeURIComponent(club.name))"
+      >私信社团</button>
 
       <section class="yearbook">
         <h2>活动年册</h2>

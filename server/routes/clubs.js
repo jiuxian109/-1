@@ -247,17 +247,33 @@ router.post('/:id/signup/withdraw', async (req, res) => {
   }
 })
 
-// 社团端：报名漏斗统计
+// 社团端：报名漏斗统计 + 回执质量面板（Q2：回执率 / 处理中位时长）
 router.get('/:id/stats', (req, res) => {
   if (!requireClub(req, res)) return
   const events = loadEvents()
   const count = (t) => events.filter((e) => e.type === t && e.clubId === req.params.id).length
-  const rosterCount = (loadClubs().clubs.find((x) => x.id === req.params.id)?.roster || []).length
+  const club = loadClubs().clubs.find((x) => x.id === req.params.id)
+  const roster = club?.roster || []
+  applyTimeouts(roster)
+  const processed = roster.filter((r) => r.status === 'accepted' || r.status === 'rejected')
+  const medianMs = (() => {
+    const arr = processed.map((r) => r.reviewedAt - r.t).sort((a, b) => a - b)
+    if (!arr.length) return null
+    const m = Math.floor(arr.length / 2)
+    return arr.length % 2 ? arr[m] : Math.round((arr[m - 1] + arr[m]) / 2)
+  })()
   res.json({
     impression: count('impression'),
     view_club: count('view_club'),
     click_signup: count('click_signup'),
-    submit_signup: rosterCount
+    submit_signup: roster.length,
+    receipt: {
+      total: roster.length,
+      processed: processed.length,
+      rate: roster.length ? Math.round((processed.length / roster.length) * 100) : 0,
+      medianMs,
+      medianHours: medianMs === null ? null : Math.round(medianMs / 360000) / 10
+    }
   })
 })
 

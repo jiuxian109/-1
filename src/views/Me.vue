@@ -57,6 +57,10 @@ function signOut() {
           <span v-if="pendingSignups" class="red-dot">{{ pendingSignups }}</span>
         </router-link>
       </div>
+      <div class="section-title">私信</div>
+      <div class="quick">
+        <router-link to="/messages">与社团的私信</router-link>
+      </div>
       <div class="section-title">逛逛社团</div>
       <div class="quick">
         <router-link to="/">发现社团</router-link>
@@ -77,6 +81,7 @@ function signOut() {
         <router-link to="/club-admin/edit">编辑社团主页</router-link>
         <router-link to="/club-admin/activity">发布活动</router-link>
         <router-link to="/club-admin/roster">查看报名名单</router-link>
+        <router-link to="/messages">站内私信</router-link>
         <router-link to="/club-admin/members">成员管理</router-link>
         <router-link to="/club-admin/settings">社团设置</router-link>
       </div>

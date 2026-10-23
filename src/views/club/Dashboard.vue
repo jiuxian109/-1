@@ -46,6 +46,23 @@ const club = computed(() => state.club)
         报名漏斗：进主页 {{ stats.view_club }} · 点报名 {{ stats.click_signup }} · 提交 {{ stats.submit_signup }}
       </div>
 
+      <!-- Q2 回执质量面板：回执率 ≥80% 、处理中位 ≤48h -->
+      <div class="receipt">
+        <div class="rc-title">回执质量</div>
+        <div class="rc-row"><span>报名总数</span><b>{{ stats.receipt?.total ?? 0 }}</b></div>
+        <div class="rc-row"><span>已处理</span><b>{{ stats.receipt?.processed ?? 0 }}</b></div>
+        <div class="rc-row">
+          <span>回执率（目标 ≥80%）</span>
+          <b :class="(stats.receipt?.rate ?? 0) >= 80 ? 'ok' : 'no'">{{ stats.receipt?.rate ?? 0 }}%</b>
+        </div>
+        <div class="rc-row">
+          <span>处理中位时长（目标 ≤48h）</span>
+          <b :class="stats.receipt?.medianHours !== null && stats.receipt?.medianHours <= 48 ? 'ok' : 'no'">
+            {{ stats.receipt?.medianHours === null ? '—' : stats.receipt?.medianHours + 'h' }}
+          </b>
+        </div>
+      </div>
+
       <div class="quick">
         <router-link to="/club-admin/edit">编辑社团主页</router-link>
         <router-link to="/club-admin/activity">发布活动</router-link>
@@ -59,3 +76,11 @@ const club = computed(() => state.club)
     <p v-else class="empty">还没有绑定社团。</p>
   </div>
 </template>
+
+<style scoped>
+.receipt { background: var(--surface); border-radius: var(--radius); padding: 14px 16px; margin: 14px 0; }
+.rc-title { font-weight: 800; font-size: 15px; margin-bottom: 8px; }
+.rc-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; color: var(--ink-soft); }
+.rc-row b.ok { color: var(--good); }
+.rc-row b.no { color: var(--end); }
+</style>

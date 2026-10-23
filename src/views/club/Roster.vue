@@ -160,6 +160,10 @@ const ageText = (r) => (r.ageDays <= 0 ? '今天' : r.ageDays + ' 天前')
               <button type="button" class="mini-btn no" :disabled="busy" @click="openReject([r.id], 'single')">拒绝</button>
             </template>
             <button v-else-if="r.status === 'accepted'" type="button" class="mini-btn" :disabled="busy" @click="importOne(r)">加入名册</button>
+            <router-link
+              v-if="r.userId" class="mini-btn link"
+              :to="'/messages?sid=' + r.userId + '&sname=' + encodeURIComponent(r.name)"
+            >私信</router-link>
           </div>
         </div>
       </div>
@@ -214,6 +218,7 @@ const ageText = (r) => (r.ageDays <= 0 ? '今天' : r.ageDays + ' 天前')
 .row-actions { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
 .mini-btn.ok { background: #DCEBE0; color: var(--good); }
 .mini-btn.no { background: #F3DCD6; color: var(--end); }
+.mini-btn.link { background: #E4EBFA; color: var(--accent); text-decoration: none; }
 .mini-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .mask { position: fixed; inset: 0; background: rgba(23, 21, 15, 0.4); display: flex; align-items: flex-end; justify-content: center; z-index: 60; }
 .sheet { background: var(--surface); border-radius: 18px 18px 0 0; padding: 18px 18px 22px; width: 100%; max-width: 430px; }

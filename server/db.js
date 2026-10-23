@@ -27,6 +27,8 @@ export const loadClubs = () => read('clubs.json', { clubs: [], nextClub: 'c1' })
 export const saveClubs = (c) => write('clubs.json', c)
 export const loadEvents = () => read('events.json', [])
 export const saveEvents = (e) => write('events.json', e)
+export const loadMessages = () => read('messages.json', { threads: [] })
+export const saveMessages = (m) => write('messages.json', m)
 
 // —— 写串行化：进程内互斥队列 ——
 // 所有 handler 目前是同步的（load→改→save 在一个 tick 内完成，本身原子），
@@ -52,5 +54,13 @@ export const updateEvents = (fn) =>
     const events = loadEvents()
     const result = await fn(events)
     saveEvents(events)
+    return result
+  })
+
+export const updateMessages = (fn) =>
+  serialize(async () => {
+    const data = loadMessages()
+    const result = await fn(data)
+    saveMessages(data)
     return result
   })
