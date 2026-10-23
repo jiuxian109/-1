@@ -38,6 +38,7 @@ function signOut() {
     <!-- 学生 -->
     <template v-else-if="user.role === 'student'">
       <div class="id-card">
+        <img v-if="user.avatar" class="me-avatar" :src="user.avatar" alt="" />
         <div class="role">学生</div>
         <div class="who">{{ user.name || ('手机尾号 ' + user.phone.slice(-4)) }}</div>
         <div class="role" style="margin-top: 4px">{{ user.phone }}</div>

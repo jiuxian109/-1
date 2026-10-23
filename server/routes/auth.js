@@ -1,10 +1,16 @@
 import { Router } from 'express'
 import crypto from 'node:crypto'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { loadUsers, saveUsers, loadClubs, saveClubs, updateClubs } from '../db.js'
 import { hashPassword, verifyPassword, signToken, verifyToken, bearer } from '../auth.js'
 import { applyTimeouts } from '../signup-status.js'
 
 const router = Router()
+const UPLOAD_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'uploads')
+const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }
+const MAX_BYTES = 4 * 1024 * 1024
 
 const uid = () => 'u' + Date.now().toString(36) + crypto.randomBytes(4).toString('hex')
 
@@ -30,15 +36,27 @@ function publicUser(u) {
     role: u.role,
     phone: u.phone,
     name: u.name || '',
+    avatar: u.avatar || '',
     clubId: u.clubId || null,
     clubName: club ? club.name : '',
     memberships: membershipsOf(u)
   }
 }
 
-// 注册：学生（手机号+密码） 或 社团（手机号+密码+社团名称，注册即新建社团）
+// 注册时上传头像（dataURL → 落盘 → 返回可访问路径），失败返回 null
+function saveAvatar(raw) {
+  const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(raw || ''))
+  if (!m) return null
+  const buf = Buffer.from(m[2], 'base64')
+  if (!buf.length || buf.length > MAX_BYTES) return null
+  const name = Date.now().toString(36) + '-' + crypto.randomBytes(6).toString('hex') + '.' + EXT[m[1]]
+  fs.writeFileSync(path.join(UPLOAD_DIR, name), buf)
+  return '/uploads/' + name
+}
+
+// 注册：学生（手机号+密码+姓名必填，可选头像） 或 社团（手机号+密码+社团名称，注册即新建社团）
 router.post('/register', (req, res) => {
-  const { role, phone, password, name, clubName } = req.body || {}
+  const { role, phone, password, name, clubName, avatar } = req.body || {}
   if (!phone || !password) return res.status(400).json({ error: '手机号和密码必填' })
   if (!/^1\d{10}$/.test(String(phone))) return res.status(400).json({ error: '请输入 11 位手机号' })
   if (String(password).length < 6) return res.status(400).json({ error: '密码至少 6 位' })
@@ -47,12 +65,24 @@ router.post('/register', (req, res) => {
   if (users.some((u) => u.phone === String(phone))) return res.status(409).json({ error: '该手机号已注册' })
 
   const isClub = role === 'club'
+
+  // 学生必须填写姓名；社团由社团名称代替
+  if (!isClub && !(name && String(name).trim())) return res.status(400).json({ error: '请填写姓名' })
+
+  // 头像：可选，仅接受 JPG / PNG / WebP 且 ≤4MB
+  let avatarPath = ''
+  if (avatar) {
+    avatarPath = saveAvatar(avatar)
+    if (!avatarPath) return res.status(400).json({ error: '头像仅支持 JPG / PNG / WebP 且需小于 4MB' })
+  }
+
   const user = {
     id: uid(),
     role: isClub ? 'club' : 'student',
     phone: String(phone),
     passwordHash: hashPassword(password),
-    name: isClub ? '' : (name || ''),
+    name: isClub ? '' : String(name).trim(),
+    avatar: avatarPath,
     clubId: null
   }
 
