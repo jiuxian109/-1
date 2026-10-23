@@ -43,6 +43,10 @@ function signOut() {
           <span class="m-tag" :class="'st-' + m.status">{{ MEMBER_STATUS[m.status] }}</span>
         </router-link>
       </div>
+      <div class="section-title">我的报名</div>
+      <div class="quick">
+        <router-link to="/my-signups">查看报名与处理进度</router-link>
+      </div>
       <div class="section-title">逛逛社团</div>
       <div class="quick">
         <router-link to="/">发现社团</router-link>

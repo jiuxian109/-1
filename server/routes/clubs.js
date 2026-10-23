@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { loadClubs, saveClubs, loadEvents, updateClubs } from '../db.js'
 import { verifyToken, bearer } from '../auth.js'
 import {
-  applyTimeouts, decorate, sortRoster, pendingCount, rosterCounts, resolveRejectReason
+  applyTimeouts, decorate, sortRoster, pendingCount, rosterCounts, resolveRejectReason, activeCount
 } from '../signup-status.js'
 
 const router = Router()
@@ -20,6 +20,9 @@ function publicClub(c) {
     activities: c.activities || [],
     rosterCount: (c.roster || []).length,
     pendingCount: pendingCount(c.roster || []),
+    signupActive: activeCount(c.roster || []),
+    quota: c.quota || 0,
+    endAt: c.endAt || null,
     memberCount: (c.members || []).filter((m) => m.status !== 'quit').length
   }
 }
@@ -66,7 +69,13 @@ router.post('/:id/signup', async (req, res) => {
       const c = data.clubs.find((x) => x.id === req.params.id)
       if (!c) { const e = new Error('社团不存在'); e.status = 404; throw e }
       if (c.status !== 'open') { const e = new Error('该社团当前不在招新'); e.status = 409; throw e }
+      // Q6 报名窗口：截止后不能再报名（可被设置用例回拨）
+      if (c.endAt && Date.now() > c.endAt) { const e = new Error('该社团报名已截止'); e.status = 409; throw e }
       c.roster = c.roster || []
+      // Q6 名额：pending+accepted 占坑，满员拒绝报名
+      if (c.quota > 0 && activeCount(c.roster) >= c.quota) {
+        const e = new Error('该社团名额已满'); e.status = 409; throw e
+      }
       // 一票否决兜底：同一学生不能重复报名（按登录账号去重）
       if (c.roster.some((r) => r.userId === p.uid)) {
         const e = new Error('你已报名过该社团，无需重复提交'); e.status = 409; throw e
@@ -86,7 +95,7 @@ router.post('/:id/signup', async (req, res) => {
   }
 })
 
-// 社团端：编辑主页
+// 社团端：编辑主页（含 Q6 名额 quota / 报名截止 endAt）
 router.put('/:id', (req, res) => {
   if (!requireClub(req, res)) return
   const data = loadClubs()
@@ -94,6 +103,18 @@ router.put('/:id', (req, res) => {
   ;['name', 'category', 'art', 'intro', 'wechat', 'status', 'bg'].forEach((k) => {
     if (req.body && req.body[k] !== undefined) c[k] = req.body[k]
   })
+  // 名额：空/0 = 不限；否则 1–9999 的整数
+  if (req.body && req.body.quota !== undefined) {
+    const q = req.body.quota === '' || req.body.quota === null ? 0 : Number(req.body.quota)
+    if (!Number.isInteger(q) || q < 0 || q > 9999) return res.status(400).json({ error: '名额需为 0（不限）或 1–9999 的整数' })
+    c.quota = q
+  }
+  // 截止时间：空 = 不设截止；否则必须是毫秒时间戳
+  if (req.body && req.body.endAt !== undefined) {
+    const v = req.body.endAt === '' || req.body.endAt === null ? null : Number(req.body.endAt)
+    if (v !== null && !Number.isFinite(v)) return res.status(400).json({ error: '报名截止时间格式不正确' })
+    c.endAt = v
+  }
   // 背景图只接受本服务上传接口产出的路径，或空值（清空回退封面插画）
   if (c.bg && !/^\/uploads\/[A-Za-z0-9._-]+$/.test(c.bg)) c.bg = ''
   saveClubs(data)
@@ -186,6 +207,32 @@ router.post('/:id/roster/decide', async (req, res) => {
     if (e.status) return res.status(e.status).json({ error: e.message })
     console.error('[decide]', e)
     res.status(500).json({ error: '处理失败，请稍后再试' })
+  }
+})
+
+// 学生端：退出报名（Q11 申请-确认：前端确认后调这里，把自己的 pending/accepted 置为 withdrawn）
+router.post('/:id/signup/withdraw', async (req, res) => {
+  const p = auth(req, res)
+  if (!p) return
+  if (p.role !== 'student') return res.status(403).json({ error: '仅学生账号可以退出报名' })
+  try {
+    const result = await updateClubs((db) => {
+      const c = db.clubs.find((x) => x.id === req.params.id)
+      if (!c) { const e = new Error('社团不存在'); e.status = 404; throw e }
+      applyTimeouts(c.roster || [])
+      const r = (c.roster || []).find((x) => x.userId === p.uid)
+      if (!r) { const e = new Error('你没有报名该社团'); e.status = 404; throw e }
+      if (r.status === 'withdrawn') { const e = new Error('你已经退出过该社团的报名'); e.status = 409; throw e }
+      if (r.status === 'rejected') { const e = new Error('该报名已被拒绝，无法退出'); e.status = 409; throw e }
+      r.status = 'withdrawn'
+      r.reviewedAt = Date.now()
+      return { updated: true, counts: rosterCounts(c.roster || []) }
+    })
+    res.json(result)
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ error: e.message })
+    console.error('[withdraw]', e)
+    res.status(500).json({ error: '退出失败，请稍后再试' })
   }
 })
 

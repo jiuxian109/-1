@@ -4,6 +4,7 @@ import Discover from '../views/Discover.vue'
 import ClubDetail from '../views/ClubDetail.vue'
 import Signup from '../views/Signup.vue'
 import Success from '../views/Success.vue'
+import MySignups from '../views/MySignups.vue'
 import Me from '../views/Me.vue'
 import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
@@ -19,6 +20,7 @@ const routes = [
   { path: '/club/:id', name: 'club', component: ClubDetail, meta: { title: '社团主页' } },
   { path: '/signup/:id', name: 'signup', component: Signup, meta: { title: '报名', hideTab: true, student: true } },
   { path: '/success/:id', name: 'success', component: Success, meta: { title: '报名成功', hideTab: true, student: true } },
+  { path: '/my-signups', name: 'my-signups', component: MySignups, meta: { title: '我的报名', hideTab: true, student: true } },
   { path: '/me', name: 'me', component: Me, meta: { title: '我的' } },
   { path: '/login', name: 'login', component: Login, meta: { title: '登录', hideTab: true } },
   { path: '/register', name: 'register', component: Register, meta: { title: '注册', hideTab: true } },

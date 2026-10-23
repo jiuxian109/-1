@@ -1,7 +1,8 @@
 import { Router } from 'express'
 import crypto from 'node:crypto'
-import { loadUsers, saveUsers, loadClubs, saveClubs } from '../db.js'
+import { loadUsers, saveUsers, loadClubs, saveClubs, updateClubs } from '../db.js'
 import { hashPassword, verifyPassword, signToken, verifyToken, bearer } from '../auth.js'
+import { applyTimeouts } from '../signup-status.js'
 
 const router = Router()
 
@@ -99,6 +100,45 @@ router.get('/me', (req, res) => {
   const user = loadUsers().find((u) => u.id === payload.uid)
   if (!user) return res.status(401).json({ error: '账号不存在' })
   res.json({ user: publicUser(user) })
+})
+
+// 学生端：我的报名（跨社团汇总本人报名行，含状态/拒绝原因/处理时长）
+router.get('/me/signups', async (req, res) => {
+  const payload = verifyToken(bearer(req))
+  if (!payload) return res.status(401).json({ error: '未登录或登录已过期' })
+  const user = loadUsers().find((u) => u.id === payload.uid)
+  if (!user) return res.status(401).json({ error: '账号不存在' })
+  if (user.role !== 'student') return res.status(403).json({ error: '仅学生账号可查看我的报名' })
+  try {
+    // 读取时顺带结算超时报名（与名单页同一口径），一次遍历全量社团
+    const data = await updateClubs((db) => {
+      for (const c of db.clubs) applyTimeouts(c.roster || [])
+      return db
+    })
+    const now = Date.now()
+    const signups = []
+    for (const c of data.clubs) {
+      for (const r of c.roster || []) {
+        if (r.userId !== user.id) continue
+        signups.push({
+          id: r.id && r.id.startsWith('r') ? r.id : ('r' + user.id + '_' + (r.t || 0)),
+          clubId: c.id,
+          clubName: c.name,
+          category: c.category,
+          art: c.art,
+          status: r.status || 'accepted',
+          rejectReason: r.rejectReason || '',
+          t: r.t || 0,
+          ageDays: Math.floor((now - (r.t || now)) / 86400000)
+        })
+      }
+    }
+    signups.sort((a, b) => b.t - a.t)
+    res.json({ signups })
+  } catch (e) {
+    console.error('[my-signups]', e)
+    res.status(500).json({ error: '加载我的报名失败，请稍后再试' })
+  }
 })
 
 export default router

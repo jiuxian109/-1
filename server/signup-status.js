@@ -67,6 +67,16 @@ export function pendingCount(roster, now = Date.now()) {
   return (roster || []).filter((r) => r.status === 'pending' && now - (r.t || 0) <= TIMEOUT_DAYS * DAY).length
 }
 
+// Q6 名额占坑口径：pending（待处理）+ accepted（已通过）占用名额；rejected/withdrawn 释放
+export function activeCount(roster) {
+  let n = 0
+  for (const r of roster || []) {
+    const s = r.status || 'accepted'
+    if (s === 'pending' || s === 'accepted') n++
+  }
+  return n
+}
+
 export function rosterCounts(roster) {
   const counts = { pending: 0, accepted: 0, rejected: 0, withdrawn: 0 }
   for (const r of roster || []) {

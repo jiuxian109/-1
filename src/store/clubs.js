@@ -16,6 +16,7 @@ export const state = reactive({
   memberDepts: [],
   memberCounts: { active: 0, pending: 0, quit: 0, total: 0 },
   lastSignup: null,
+  mySignups: [],
   loading: false,
   toast: ''
 })
@@ -177,6 +178,21 @@ export function useClubs() {
       state.roster = d.roster
       state.rosterCounts = d.counts
       return d.roster
+    },
+
+    // ---- 我的报名（学生端）----
+    async fetchMySignups() {
+      const d = await api('/auth/me/signups')
+      state.mySignups = d.signups
+      return d.signups
+    },
+
+    // 退出报名：申请-确认后把报名置为已撤回
+    async withdrawSignup(clubId) {
+      const d = await api('/clubs/' + clubId + '/signup/withdraw', { method: 'POST' })
+      const row = state.mySignups.find((s) => s.clubId === clubId)
+      if (row) row.status = 'withdrawn'
+      return d
     },
 
     // 批量处理报名：action = 'accept' | 'reject'，拒绝需 reasonKey 或 reason

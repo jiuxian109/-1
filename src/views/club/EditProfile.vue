@@ -12,15 +12,25 @@ const err = ref('')
 const saving = ref(false)
 const bgBusy = ref(false)
 const form = reactive({
-  name: '', category: '兴趣', art: 'stage', intro: '', wechat: '', status: 'soon', bg: ''
+  name: '', category: '兴趣', art: 'stage', intro: '', wechat: '', status: 'soon', bg: '',
+  quota: '', endAt: ''
 })
+
+function toLocalInput(ms) {
+  if (!ms) return ''
+  const d = new Date(ms)
+  const p = (n) => String(n).padStart(2, '0')
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes())
+}
 
 onMounted(async () => {
   try {
     const c = await fetchClub(state.user.clubId)
     Object.assign(form, {
       name: c.name, category: c.category, art: c.art, intro: c.intro,
-      wechat: c.wechat, status: c.status, bg: c.bg || ''
+      wechat: c.wechat, status: c.status, bg: c.bg || '',
+      quota: c.quota ? String(c.quota) : '',
+      endAt: toLocalInput(c.endAt)
     })
   } catch (e) {
     err.value = e.message
@@ -52,10 +62,17 @@ function clearBg() {
 
 async function save() {
   if (!form.name) { toast('社团名称不能为空'); return }
+  if (form.quota !== '') {
+    const q = Number(form.quota)
+    if (!Number.isInteger(q) || q < 0 || q > 9999) { toast('名额需为 0（不限）或 1–9999 的整数'); return }
+  }
   saving.value = true
   err.value = ''
   try {
-    await updateClub(state.user.clubId, { ...form })
+    const payload = { ...form }
+    payload.quota = form.quota === '' ? '' : String(Number(form.quota))
+    payload.endAt = form.endAt ? String(new Date(form.endAt).getTime()) : ''
+    await updateClub(state.user.clubId, payload)
     toast('主页已更新')
     router.back()
   } catch (e) {
@@ -117,6 +134,16 @@ async function save() {
         <select id="e-status" v-model="form.status">
           <option v-for="(label, v) in STATUS_LABEL" :key="v" :value="v">{{ label }}</option>
         </select>
+      </div>
+      <div class="field">
+        <label for="e-quota">报名名额</label>
+        <input id="e-quota" v-model="form.quota" inputmode="numeric" placeholder="留空或填 0 表示不限名额" />
+        <p class="hint">名额按「待处理 + 已通过」的报名数占坑，被拒绝或退出的报名会释放名额。</p>
+      </div>
+      <div class="field">
+        <label for="e-endat">报名截止时间</label>
+        <input id="e-endat" type="datetime-local" v-model="form.endAt" />
+        <p class="hint">到达截止时间后，学生将无法再提交报名；留空表示不设截止。</p>
       </div>
       <button type="submit" class="btn block" :disabled="saving || bgBusy">{{ saving ? '保存中…' : bgBusy ? '背景图上传中…' : '保存主页' }}</button>
     </form>

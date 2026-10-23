@@ -20,6 +20,26 @@ onMounted(async () => {
 
 const club = computed(() => state.club)
 
+const closedMsg = computed(() => {
+  if (!club.value) return ''
+  if (club.value.status !== 'open') return '该社团当前不在招新，暂不能报名。'
+  if (club.value.endAt && Date.now() > +club.value.endAt) return '该社团报名已截止。'
+  if (club.value.quota > 0 && club.value.signupActive >= club.value.quota) return '该社团名额已满，暂不能报名。'
+  return ''
+})
+
+const quotaLeft = computed(() => {
+  if (!club.value || club.value.quota <= 0) return 0
+  return Math.max(0, club.value.quota - club.value.signupActive)
+})
+
+function fmtDeadline(ms) {
+  if (!ms) return ''
+  const d = new Date(+ms)
+  const p = (n) => String(n).padStart(2, '0')
+  return d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes())
+}
+
 async function submit() {
   if (!club.value) return
   if (!form.name || !form.sid || !form.phone || !form.wechat) { submitErr.value = '请填写所有必填项'; return }
@@ -45,7 +65,12 @@ async function submit() {
       <h2 style="font-size: 20px; font-weight: 800; margin-bottom: 4px">加入 {{ club.name }}</h2>
       <p style="font-size: 13px; color: var(--muted); margin-bottom: 18px">提交后，你的名字会写入社团花名册。</p>
 
-      <form v-if="club.status === 'open'" @submit.prevent="submit">
+      <div class="signup-meta" v-if="!closedMsg">
+        <span v-if="club.endAt" class="meta-chip">报名截止：{{ fmtDeadline(club.endAt) }}</span>
+        <span v-if="club.quota > 0" class="meta-chip" :class="{ 'meta-full': quotaLeft === 0 }">剩余名额：{{ quotaLeft }}</span>
+      </div>
+
+      <form v-if="!closedMsg" @submit.prevent="submit">
         <div class="field">
           <label for="f-name">姓名</label>
           <input id="f-name" v-model="form.name" placeholder="你的真实姓名" />
@@ -74,8 +99,14 @@ async function submit() {
         <p v-if="submitErr" class="err">{{ submitErr }}</p>
         <button type="submit" class="btn block" :disabled="busy">{{ busy ? '提交中…' : '提交报名' }}</button>
       </form>
-      <p v-else class="empty">该社团当前不在招新，暂不能报名。</p>
+      <p v-else class="empty">{{ closedMsg }}</p>
     </template>
     <p v-else class="empty">社团不存在或已下架。</p>
   </div>
 </template>
+
+<style scoped>
+.signup-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.meta-chip { font-size: 12px; padding: 3px 8px; border-radius: 999px; background: var(--field); color: var(--ink-soft); }
+.meta-full { background: #f9e3de; color: #a63a2a; }
+</style>
