@@ -2,37 +2,52 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useClubs } from '../store/clubs'
-import ClubArt from '../components/ClubArt.vue'
 
 const router = useRouter()
-const { clubs, getClub, identity, setRole, signOut, toast } = useClubs()
+const { state, logout, toast } = useClubs()
 
-const myClub = computed(() => (identity.clubId ? getClub(identity.clubId) : null))
+const user = computed(() => state.user)
 
-function enterClub(id) { setRole('club', id); toast('已切换到社团身份'); router.push('/club-admin') }
-function backToStudent() { signOut(); toast('已切换到学生身份'); router.push('/') }
+function signOut() {
+  logout()
+  toast('已退出登录')
+  router.push('/')
+}
 </script>
 
 <template>
   <div class="view-anim">
-    <div class="id-card">
-      <div class="role">{{ identity.role === 'club' ? '社团管理员' : '学生' }}</div>
-      <div class="who">{{ identity.role === 'club' && myClub ? myClub.name : '逛社团、看活动' }}</div>
-    </div>
-
-    <template v-if="identity.role === 'student'">
-      <div class="section-title">以社团身份进入</div>
-      <div class="pick-list">
-        <button v-for="c in clubs" :key="c.id" class="pick" @click="enterClub(c.id)">
-          <span class="cover"><ClubArt :type="c.art" :seed="c.id" /></span>
-          <span>{{ c.name }}</span>
-          <span class="go">›</span>
-        </button>
+    <!-- 未登录 -->
+    <template v-if="!user">
+      <div class="id-card" style="text-align: center">
+        <div class="who" style="margin-bottom: 4px">欢迎来到百团</div>
+        <div class="role">登录后报名社团、维护社团主页。</div>
       </div>
-      <button class="btn block" style="margin-top: 18px" @click="router.push('/club/new')">创建我的社团</button>
+      <router-link to="/login" class="btn block">登录</router-link>
+      <router-link to="/register" class="btn ghost block" style="margin-top: 10px">注册账号</router-link>
     </template>
 
+    <!-- 学生 -->
+    <template v-else-if="user.role === 'student'">
+      <div class="id-card">
+        <div class="role">学生</div>
+        <div class="who">{{ user.name || ('手机尾号 ' + user.phone.slice(-4)) }}</div>
+        <div class="role" style="margin-top: 4px">{{ user.phone }}</div>
+      </div>
+      <div class="section-title">逛逛社团</div>
+      <div class="quick">
+        <router-link to="/">发现社团</router-link>
+      </div>
+      <button class="btn ghost block" style="margin-top: 18px" @click="signOut">退出登录</button>
+    </template>
+
+    <!-- 社团 -->
     <template v-else>
+      <div class="id-card">
+        <div class="role">社团管理员</div>
+        <div class="who">{{ user.clubName || '我的社团' }}</div>
+        <div class="role" style="margin-top: 4px">{{ user.phone }}</div>
+      </div>
       <div class="section-title">工作台</div>
       <div class="quick">
         <router-link to="/club-admin">社团工作台</router-link>
@@ -40,7 +55,7 @@ function backToStudent() { signOut(); toast('已切换到学生身份'); router.
         <router-link to="/club-admin/activity">发布活动</router-link>
         <router-link to="/club-admin/roster">查看报名名单</router-link>
       </div>
-      <button class="btn ghost block" style="margin-top: 18px" @click="backToStudent">切换为学生身份</button>
+      <button class="btn ghost block" style="margin-top: 18px" @click="signOut">退出登录</button>
     </template>
   </div>
 </template>

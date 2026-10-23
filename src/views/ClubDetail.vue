@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useClubs } from '../store/clubs'
 import ClubArt from '../components/ClubArt.vue'
@@ -7,11 +7,28 @@ import StatusTag from '../components/StatusTag.vue'
 
 const route = useRoute()
 const router = useRouter()
-const { getClub, track } = useClubs()
+const { state, fetchClub, track } = useClubs()
 
-const club = computed(() => getClub(route.params.id))
+const loading = ref(true)
+const err = ref('')
 
-onMounted(() => { if (club.value) track('view_club', club.value.id) })
+async function load() {
+  loading.value = true
+  err.value = ''
+  try {
+    const c = await fetchClub(route.params.id)
+    track('view_club', c.id)
+  } catch (e) {
+    err.value = e.message
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(load)
+watch(() => route.params.id, load)
+
+const club = computed(() => state.club)
 
 function photoSeeds(act) {
   const n = Math.min(act.photos || 1, 9)
@@ -40,37 +57,41 @@ function join() {
 </script>
 
 <template>
-  <div v-if="club" class="view-anim">
-    <div class="detail-hero">
-      <div class="cover"><ClubArt :type="club.art" :seed="club.id" /></div>
-    </div>
-    <h1 class="detail-name">{{ club.name }}</h1>
-    <div class="meta-row">
-      <span class="meta-chip">{{ club.category }}</span>
-      <StatusTag :status="club.status" />
-      <span class="meta-chip">微信 {{ club.wechat }}</span>
-    </div>
-    <p class="intro">{{ club.intro }}</p>
-
-    <button v-if="club.status === 'open'" class="btn block" style="margin-top: 18px" @click="join">我要报名</button>
-
-    <section class="yearbook">
-      <h2>活动年册</h2>
-      <p v-if="!Object.keys(yearbook).length" class="empty">还没有活动记录。</p>
-      <div v-for="(acts, month) in yearbook" :key="month" class="month">
-        <div class="month-title">{{ month }}</div>
-        <article v-for="act in acts" :key="act.id" class="act-card">
-          <div class="act-grid">
-            <div v-for="t in photoSeeds(act)" :key="t.seed" class="ph"><ClubArt :type="t.type" :seed="t.seed" /></div>
-          </div>
-          <div class="act-body">
-            <h3>{{ act.title }}</h3>
-            <div class="act-date">{{ act.date }}</div>
-            <p class="act-note">{{ act.note }}</p>
-          </div>
-        </article>
+  <div class="view-anim">
+    <p v-if="loading" class="empty">正在加载社团主页…</p>
+    <p v-else-if="err" class="empty">{{ err }}</p>
+    <template v-else-if="club">
+      <div class="detail-hero">
+        <div class="cover"><ClubArt :type="club.art" :seed="club.id" /></div>
       </div>
-    </section>
+      <h1 class="detail-name">{{ club.name }}</h1>
+      <div class="meta-row">
+        <span class="meta-chip">{{ club.category }}</span>
+        <StatusTag :status="club.status" />
+        <span v-if="club.wechat" class="meta-chip">微信 {{ club.wechat }}</span>
+      </div>
+      <p class="intro">{{ club.intro || '这个社团还没有写简介。' }}</p>
+
+      <button v-if="club.status === 'open'" class="btn block" style="margin-top: 18px" @click="join">我要报名</button>
+
+      <section class="yearbook">
+        <h2>活动年册</h2>
+        <p v-if="!Object.keys(yearbook).length" class="empty">还没有活动记录。</p>
+        <div v-for="(acts, month) in yearbook" :key="month" class="month">
+          <div class="month-title">{{ month }}</div>
+          <article v-for="act in acts" :key="act.id" class="act-card">
+            <div class="act-grid">
+              <div v-for="t in photoSeeds(act)" :key="t.seed" class="ph"><ClubArt :type="t.type" :seed="t.seed" /></div>
+            </div>
+            <div class="act-body">
+              <h3>{{ act.title }}</h3>
+              <div class="act-date">{{ act.date }}</div>
+              <p class="act-note">{{ act.note }}</p>
+            </div>
+          </article>
+        </div>
+      </section>
+    </template>
+    <p v-else class="empty">社团不存在或已下架。</p>
   </div>
-  <div v-else class="empty">社团不存在或已下架。</div>
 </template>

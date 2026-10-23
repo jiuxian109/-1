@@ -1,0 +1,124 @@
+import { Router } from 'express'
+import { loadClubs, saveClubs, loadEvents } from '../db.js'
+import { verifyToken, bearer } from '../auth.js'
+
+const router = Router()
+
+function publicClub(c) {
+  return {
+    id: c.id,
+    name: c.name,
+    category: c.category,
+    art: c.art,
+    intro: c.intro || '',
+    wechat: c.wechat || '',
+    status: c.status,
+    activities: c.activities || [],
+    rosterCount: (c.roster || []).length
+  }
+}
+
+function auth(req, res) {
+  const p = verifyToken(bearer(req))
+  if (!p) { res.status(401).json({ error: '请先登录' }); return null }
+  return p
+}
+
+function requireClub(req, res) {
+  const p = auth(req, res)
+  if (!p) return null
+  if (p.role !== 'club' || p.clubId !== req.params.id) {
+    res.status(403).json({ error: '无权操作该社团' })
+    return null
+  }
+  return p
+}
+
+// 公开：社团列表
+router.get('/', (req, res) => {
+  const { clubs } = loadClubs()
+  res.json({ clubs: clubs.map(publicClub) })
+})
+
+// 公开：社团详情（浏览量 +1）
+router.get('/:id', (req, res) => {
+  const data = loadClubs()
+  const c = data.clubs.find((x) => x.id === req.params.id)
+  if (!c) return res.status(404).json({ error: '社团不存在' })
+  c.viewCount = (c.viewCount || 0) + 1
+  saveClubs(data)
+  res.json({ club: publicClub(c) })
+})
+
+// 学生报名（需登录；前端限制学生身份）
+router.post('/:id/signup', (req, res) => {
+  const p = auth(req, res)
+  if (!p) return
+  const { name, sid, phone, wechat, why } = req.body || {}
+  if (!name || !sid || !phone || !wechat) return res.status(400).json({ error: '请填写所有必填项' })
+  if (!/^1\d{10}$/.test(String(phone))) return res.status(400).json({ error: '请输入 11 位手机号' })
+  const data = loadClubs()
+  const c = data.clubs.find((x) => x.id === req.params.id)
+  if (!c) return res.status(404).json({ error: '社团不存在' })
+  c.roster = c.roster || []
+  c.roster.push({ name, sid, phone: String(phone), wechat, why: why || '', userId: p.uid, t: Date.now() })
+  saveClubs(data)
+  res.json({ row: c.roster.length })
+})
+
+// 社团端：编辑主页
+router.put('/:id', (req, res) => {
+  if (!requireClub(req, res)) return
+  const data = loadClubs()
+  const c = data.clubs.find((x) => x.id === req.params.id)
+  ;['name', 'category', 'art', 'intro', 'wechat', 'status'].forEach((k) => {
+    if (req.body && req.body[k] !== undefined) c[k] = req.body[k]
+  })
+  saveClubs(data)
+  res.json({ club: publicClub(c) })
+})
+
+// 社团端：发布活动
+router.post('/:id/activities', (req, res) => {
+  if (!requireClub(req, res)) return
+  const { title, date, note, type, photos } = req.body || {}
+  if (!title || !date) return res.status(400).json({ error: '请填写活动标题和日期' })
+  const data = loadClubs()
+  const c = data.clubs.find((x) => x.id === req.params.id)
+  const act = {
+    id: 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    title,
+    date,
+    note: note || '',
+    type: type || 'dance',
+    photos: Math.min(9, Math.max(1, parseInt(photos, 10) || 3)),
+    seed: Date.now().toString(36)
+  }
+  c.activities = c.activities || []
+  c.activities.unshift(act)
+  saveClubs(data)
+  res.json({ activity: act })
+})
+
+// 社团端：报名名单
+router.get('/:id/roster', (req, res) => {
+  if (!requireClub(req, res)) return
+  const c = loadClubs().clubs.find((x) => x.id === req.params.id)
+  res.json({ roster: c.roster || [] })
+})
+
+// 社团端：报名漏斗统计
+router.get('/:id/stats', (req, res) => {
+  if (!requireClub(req, res)) return
+  const events = loadEvents()
+  const count = (t) => events.filter((e) => e.type === t && e.clubId === req.params.id).length
+  const rosterCount = (loadClubs().clubs.find((x) => x.id === req.params.id)?.roster || []).length
+  res.json({
+    impression: count('impression'),
+    view_club: count('view_club'),
+    click_signup: count('click_signup'),
+    submit_signup: rosterCount
+  })
+})
+
+export default router

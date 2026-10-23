@@ -216,6 +216,21 @@ img { display: block; max-width: 100%; }
 .pick span { flex: 1; font-weight: 600; font-size: 15px; }
 .pick .go { color: var(--muted); font-size: 18px; }
 
+/* ============ 登录 / 注册 ============ */
+.auth-title { font-size: 24px; font-weight: 800; margin-bottom: 4px; }
+.auth-sub { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
+.auth-alt { text-align: center; font-size: 14px; color: var(--muted); margin-top: 18px; }
+.link { color: var(--accent); font-weight: 600; }
+.role-tabs {
+  display: flex; gap: 8px; background: var(--field);
+  border-radius: 14px; padding: 4px; margin-bottom: 18px;
+}
+.role-tabs button {
+  flex: 1; padding: 10px; border-radius: 10px; font-size: 14px; font-weight: 600;
+  color: var(--ink-soft); transition: background .18s ease, color .18s ease;
+}
+.role-tabs button.on { background: var(--surface); color: var(--ink); }
+
 /* ============ 空状态 ============ */
 .empty { text-align: center; color: var(--muted); font-size: 14px; padding: 30px 0; }
 

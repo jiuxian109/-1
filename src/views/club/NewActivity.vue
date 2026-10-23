@@ -5,32 +5,31 @@ import { useClubs } from '../../store/clubs'
 import ClubArt from '../../components/ClubArt.vue'
 
 const router = useRouter()
-const { identity, addActivity, toast } = useClubs()
-
-const ART_OPTIONS = [
-  { v: 'dance', label: '街舞' }, { v: 'music', label: '音乐' },
-  { v: 'photo', label: '摄影' }, { v: 'debate', label: '辩论' },
-  { v: 'sport', label: '运动' }, { v: 'volunteer', label: '公益' },
-  { v: 'science', label: '天文' }, { v: 'hanfu', label: '汉服' },
-  { v: 'stage', label: '舞台' }
-]
+const { state, ART_OPTIONS, addActivity, toast } = useClubs()
 
 const form = reactive({ title: '', date: '', note: '', type: 'dance' })
 const photos = ref(3)
 const err = ref('')
+const busy = ref(false)
 
 const preview = computed(() =>
   Array.from({ length: photos.value }, (_, i) => ({ type: form.type, seed: 'prev' + i }))
 )
 
-function submit() {
+async function submit() {
   if (!form.title || !form.date) { err.value = '请填写活动标题和日期'; return }
-  addActivity(identity.clubId, {
-    title: form.title, date: form.date, note: form.note,
-    type: form.type, seed: Date.now().toString(36), photos: photos.value
-  })
-  toast('活动已发布')
-  router.back()
+  busy.value = true
+  err.value = ''
+  try {
+    await addActivity(state.user.clubId, {
+      title: form.title, date: form.date, note: form.note, type: form.type, photos: photos.value
+    })
+    toast('活动已发布')
+    router.back()
+  } catch (e) {
+    err.value = e.message
+    busy.value = false
+  }
 }
 </script>
 
@@ -63,6 +62,6 @@ function submit() {
     </div>
 
     <p v-if="err" class="err">{{ err }}</p>
-    <button type="submit" class="btn block">发布活动</button>
+    <button type="submit" class="btn block" :disabled="busy">{{ busy ? '发布中…' : '发布活动' }}</button>
   </form>
 </template>

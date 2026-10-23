@@ -1,14 +1,18 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useClubs } from '../store/clubs'
 
 const route = useRoute()
-const { getClub, maskPhone } = useClubs()
+const { state, fetchClub, maskPhone } = useClubs()
 
-const club = computed(() => getClub(route.params.id))
-const row = computed(() => Number(route.query.row) || 1)
-const entry = computed(() => (club.value?.roster || [])[row.value - 1])
+onMounted(() => { if (!state.club) fetchClub(route.params.id).catch(() => {}) })
+
+const club = computed(() => state.club)
+const row = computed(() => Number(route.query.row) || (state.lastSignup ? state.lastSignup.row : 1))
+const entry = computed(() => state.lastSignup
+  ? { name: state.lastSignup.name, sid: state.lastSignup.sid, phone: state.lastSignup.phone, why: state.lastSignup.why }
+  : null)
 </script>
 
 <template>
