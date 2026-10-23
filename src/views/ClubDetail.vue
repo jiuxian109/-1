@@ -60,14 +60,18 @@ function join() {
     <p v-if="loading" class="empty">正在加载社团主页…</p>
     <p v-else-if="err" class="empty">{{ err }}</p>
     <template v-else-if="club">
-      <div class="detail-hero">
-        <div class="cover"><ClubArt :type="club.art" :seed="club.id" /></div>
-      </div>
-      <h1 class="detail-name">{{ club.name }}</h1>
-      <div class="meta-row">
-        <span class="meta-chip">{{ club.category }}</span>
-        <StatusTag :status="club.status" />
-        <span v-if="club.wechat" class="meta-chip">微信 {{ club.wechat }}</span>
+      <div class="hero">
+        <div v-if="club.bg" class="hero-bg" :style="{ backgroundImage: 'url(' + club.bg + ')' }"></div>
+        <div v-else class="hero-bg hero-art"><ClubArt :type="club.art" :seed="club.id" /></div>
+        <div class="hero-shade"></div>
+        <div class="hero-inner">
+          <h1 class="hero-name">{{ club.name }}</h1>
+          <div class="hero-meta">
+            <span class="hero-chip">{{ club.category }}</span>
+            <StatusTag :status="club.status" />
+            <span v-if="club.wechat" class="hero-chip">微信 {{ club.wechat }}</span>
+          </div>
+        </div>
       </div>
       <p class="intro">{{ club.intro || '这个社团还没有写简介。' }}</p>
 

@@ -2,20 +2,25 @@
 import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useClubs } from '../../store/clubs'
+import { compressImage } from '../../lib/image'
 
 const router = useRouter()
-const { state, CATEGORIES, STATUS_LABEL, ART_OPTIONS, fetchClub, updateClub, toast } = useClubs()
+const { state, CATEGORIES, STATUS_LABEL, ART_OPTIONS, fetchClub, updateClub, uploadPhoto, toast } = useClubs()
 
 const loading = ref(true)
 const err = ref('')
 const saving = ref(false)
-const form = reactive({ name: '', category: '兴趣', art: 'stage', intro: '', wechat: '', status: 'soon' })
+const bgBusy = ref(false)
+const form = reactive({
+  name: '', category: '兴趣', art: 'stage', intro: '', wechat: '', status: 'soon', bg: ''
+})
 
 onMounted(async () => {
   try {
     const c = await fetchClub(state.user.clubId)
     Object.assign(form, {
-      name: c.name, category: c.category, art: c.art, intro: c.intro, wechat: c.wechat, status: c.status
+      name: c.name, category: c.category, art: c.art, intro: c.intro,
+      wechat: c.wechat, status: c.status, bg: c.bg || ''
     })
   } catch (e) {
     err.value = e.message
@@ -23,6 +28,27 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+async function pickBg(e) {
+  const file = (e.target.files || [])[0]
+  e.target.value = ''
+  if (!file || !/^image\//.test(file.type)) return
+  bgBusy.value = true
+  err.value = ''
+  try {
+    const data = await compressImage(file, 1920, 0.85)
+    if (!data) throw new Error('这张图片读不出来，换一张试试')
+    form.bg = await uploadPhoto(data)
+  } catch (e2) {
+    err.value = e2.message
+  } finally {
+    bgBusy.value = false
+  }
+}
+
+function clearBg() {
+  form.bg = ''
+}
 
 async function save() {
   if (!form.name) { toast('社团名称不能为空'); return }
@@ -55,7 +81,25 @@ async function save() {
         </select>
       </div>
       <div class="field">
-        <label for="e-art">封面插画</label>
+        <label>主页背景图</label>
+        <div v-if="form.bg" class="bg-preview">
+          <img :src="form.bg" alt="主页背景图预览" />
+          <div class="bg-preview-actions">
+            <label class="mini-btn">
+              更换
+              <input type="file" accept="image/*" hidden :disabled="bgBusy" @change="pickBg" />
+            </label>
+            <button type="button" class="mini-btn" @click="clearBg">移除</button>
+          </div>
+        </div>
+        <label v-else class="bg-add">
+          <input type="file" accept="image/*" hidden :disabled="bgBusy" @change="pickBg" />
+          <span>{{ bgBusy ? '上传中…' : '＋ 上传背景图' }}</span>
+        </label>
+        <p class="hint">建议横向构图（16:9 以上），会铺在社团主页顶部并压深色遮罩；不传则沿用封面插画。</p>
+      </div>
+      <div class="field">
+        <label for="e-art">封面插画（未上传背景图时使用）</label>
         <select id="e-art" v-model="form.art">
           <option v-for="a in ART_OPTIONS" :key="a.v" :value="a.v">{{ a.label }}</option>
         </select>
@@ -74,7 +118,7 @@ async function save() {
           <option v-for="(label, v) in STATUS_LABEL" :key="v" :value="v">{{ label }}</option>
         </select>
       </div>
-      <button type="submit" class="btn block" :disabled="saving">{{ saving ? '保存中…' : '保存主页' }}</button>
+      <button type="submit" class="btn block" :disabled="saving || bgBusy">{{ saving ? '保存中…' : bgBusy ? '背景图上传中…' : '保存主页' }}</button>
     </form>
   </div>
 </template>

@@ -2,6 +2,7 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useClubs } from '../../store/clubs'
+import { compressImage } from '../../lib/image'
 
 const router = useRouter()
 const { state, addActivity, uploadPhoto, toast } = useClubs()
@@ -13,29 +14,6 @@ const busy = ref(false)
 const busyText = ref('')
 
 const MAX = 9
-const MAX_SIDE = 1600
-
-// 压缩到最长边 1600px 的 JPEG，避免手机原图过大
-function shrink(file) {
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(file)
-    const img = new Image()
-    img.onload = () => {
-      const scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height))
-      const canvas = document.createElement('canvas')
-      canvas.width = Math.round(img.width * scale)
-      canvas.height = Math.round(img.height * scale)
-      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
-      URL.revokeObjectURL(url)
-      resolve(canvas.toDataURL('image/jpeg', 0.82))
-    }
-    img.onerror = () => {
-      URL.revokeObjectURL(url)
-      resolve('')
-    }
-    img.src = url
-  })
-}
 
 async function pick(e) {
   const files = Array.from(e.target.files || [])
@@ -48,7 +26,7 @@ async function pick(e) {
   if (files.length > room) err.value = `最多 ${MAX} 张，已保留前 ${room} 张`
   for (const f of files.slice(0, room)) {
     if (!/^image\//.test(f.type)) continue
-    const data = await shrink(f)
+    const data = await compressImage(f)
     if (data && photos.value.length < MAX) photos.value.push({ name: f.name, data })
   }
 }

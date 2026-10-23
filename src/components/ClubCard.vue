@@ -13,7 +13,13 @@ const firstAct = () => (props.club.activities || [])[0] || null
 
 <template>
   <router-link :to="'/club/' + club.id" class="club-card">
-    <div class="cover"><ClubArt :type="club.art" :seed="club.id" /></div>
+    <div
+      class="cover"
+      :class="{ 'cover-bg': !!club.bg }"
+      :style="club.bg ? { backgroundImage: 'url(' + club.bg + ')' } : null"
+    >
+      <ClubArt v-if="!club.bg" :type="club.art" :seed="club.id" />
+    </div>
     <div class="club-card-body">
       <div class="club-card-head">
         <h3>{{ club.name }}</h3>

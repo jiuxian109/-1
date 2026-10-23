@@ -50,6 +50,7 @@ router.post('/register', (req, res) => {
       intro: '',
       wechat: '',
       status: 'soon',
+      bg: '',
       approved: true,
       activities: [],
       roster: [],

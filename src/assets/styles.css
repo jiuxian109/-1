@@ -91,6 +91,7 @@ img { display: block; max-width: 100%; }
   overflow: hidden; animation: fadeUp .5s cubic-bezier(.2, .7, .3, 1) both;
 }
 .cover { aspect-ratio: 16 / 9; background: var(--field); }
+.cover-bg { background-size: cover; background-position: center; }
 .art { display: block; width: 100%; height: 100%; }
 .art svg { display: block; width: 100%; height: 100%; }
 .club-card-body { padding: 14px 16px 16px; }
@@ -138,9 +139,23 @@ img { display: block; max-width: 100%; }
 .err { color: var(--end); font-size: 13px; margin-bottom: 12px; }
 
 /* ============ 详情页 ============ */
-.detail-hero { position: relative; margin: -18px -16px 16px; }
-.detail-hero .cover { aspect-ratio: 16 / 9; }
-.detail-name { font-size: 24px; font-weight: 800; line-height: 1.3; }
+.hero {
+  position: relative; height: 240px; margin: -18px -16px 16px;
+  overflow: hidden; background: var(--field-2);
+}
+.hero-bg { position: absolute; inset: 0; background-size: cover; background-position: center; }
+.hero-art, .hero-art svg { width: 100%; height: 100%; display: block; }
+.hero-shade {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(23, 21, 15, 0.28) 0%, rgba(23, 21, 15, 0.72) 100%);
+}
+.hero-inner { position: absolute; left: 16px; right: 16px; bottom: 16px; }
+.hero-name { font-size: 25px; font-weight: 800; line-height: 1.25; color: #fff; }
+.hero-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.hero-chip {
+  font-size: 12px; padding: 4px 12px; border-radius: 12px;
+  background: rgba(253, 252, 249, 0.2); color: #fff;
+}
 .meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; }
 .meta-chip { font-size: 12px; padding: 4px 12px; border-radius: 12px; background: var(--field); color: var(--ink-soft); }
 .intro { font-size: 15px; color: var(--ink-soft); margin-top: 10px; }
@@ -176,6 +191,23 @@ img { display: block; max-width: 100%; }
 }
 .photo-add:hover { background: var(--field-2); color: var(--ink-soft); }
 .hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+/* ============ 主页背景图 ============ */
+.bg-add {
+  display: grid; place-items: center; height: 96px; border-radius: 12px;
+  background: var(--field); color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: background .18s ease, color .18s ease;
+}
+.bg-add:hover { background: var(--field-2); color: var(--ink-soft); }
+.bg-preview { position: relative; border-radius: 12px; overflow: hidden; background: var(--field); }
+.bg-preview img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+.bg-preview-actions { display: flex; gap: 8px; padding: 8px; background: var(--surface); }
+.mini-btn {
+  padding: 6px 14px; border-radius: 10px; font-size: 13px; font-weight: 600;
+  background: var(--field); color: var(--ink-soft); cursor: pointer;
+  transition: background .18s ease, color .18s ease;
+}
+.mini-btn:hover { background: var(--field-2); color: var(--ink); }
 
 /* ============ 报名成功 ============ */
 .success-card { text-align: center; padding: 30px 20px; background: var(--surface); border-radius: var(--radius); }

@@ -13,6 +13,7 @@ function publicClub(c) {
     intro: c.intro || '',
     wechat: c.wechat || '',
     status: c.status,
+    bg: c.bg || '',
     activities: c.activities || [],
     rosterCount: (c.roster || []).length
   }
@@ -71,9 +72,11 @@ router.put('/:id', (req, res) => {
   if (!requireClub(req, res)) return
   const data = loadClubs()
   const c = data.clubs.find((x) => x.id === req.params.id)
-  ;['name', 'category', 'art', 'intro', 'wechat', 'status'].forEach((k) => {
+  ;['name', 'category', 'art', 'intro', 'wechat', 'status', 'bg'].forEach((k) => {
     if (req.body && req.body[k] !== undefined) c[k] = req.body[k]
   })
+  // 背景图只接受本服务上传接口产出的路径，或空值（清空回退封面插画）
+  if (c.bg && !/^\/uploads\/[A-Za-z0-9._-]+$/.test(c.bg)) c.bg = ''
   saveClubs(data)
   res.json({ club: publicClub(c) })
 })
