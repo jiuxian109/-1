@@ -3,7 +3,7 @@
 面向**普通学生**和**社团管理员**的校园社团招新与风采平台（Vue 3 + Vite 前端 + Express 真实后端）。
 
 - 学生端：注册/登录 → 逛社团 → 看主页与「活动年册」→ 登录后报名 → 在「我的」看到自己的社团身份（社团 · 部门 · 职务）
-- 社团端：注册即建社团 → 维护主页（可上传主页背景图）→ 发布活动（含真实照片上传与活动简介）→ 查看/导出报名名单 → 管理成员名册（部门/职务/在册状态）→ 自查报名漏斗
+- 社团端：注册即建社团 → 维护主页（可上传主页背景图）→ 发布活动（含真实照片上传与活动简介）→ 处理报名待办（状态机：通过/拒绝，拒绝必填原因，超 10 天自动拒绝）→ 查看/导出报名名单 → 管理成员名册（部门/职务/在册状态）→ 自查报名漏斗
 
 > 这是「百团」的 C 端工程（无全校管理方）。V1 完整版（含管理方审核台/数据台）见同级 `b/`。
 
@@ -72,14 +72,15 @@ npm start        # = npm run build && npm run server，访问 http://127.0.0.1:3
 | POST | `/api/auth/register` | — | 注册；`role=student` 或 `club`（club 需 `clubName`，返回 `clubId`） |
 | POST | `/api/auth/login` | — | 手机号 + 密码，返回 `{ token, user }` |
 | GET | `/api/auth/me` | 任意登录 | 当前用户（社团回带 `clubName`，学生回带 `memberships`） |
-| GET | `/api/clubs` | — | 社团列表 |
-| GET | `/api/clubs/:id` | — | 社团详情（浏览数 +1） |
-| POST | `/api/clubs/:id/signup` | 学生 | 报名，返回 `{ row }` 名册行号 |
+| GET | `/api/clubs` | — | 社团列表（带 `pendingCount` 待办数） |
+| GET | `/api/clubs/:id` | — | 社团详情（浏览不再落库，全走埋点事件流） |
+| POST | `/api/clubs/:id/signup` | 学生 | 报名，返回 `{ row }` 名册行号；仅招新中(`status=open`)可报、按人/社去重、新报名为 `pending` |
 | PUT | `/api/clubs/:id` | 社团（须本人） | 更新主页 7 字段（含 `bg` 背景图路径，非 `/uploads/*` 会被清空） |
 | POST | `/api/clubs/:id/activities` | 社团（须本人） | 发布活动（`intro` ≤120 字、`photos` 为 `/uploads/*` 路径数组、最多 9 张） |
 | POST | `/api/uploads` | 社团 | 上传图片（活动照片 / 主页背景图通用）：`{ data: dataURL }` → `{ url }`（仅 jpeg/png/webp，单张 ≤4MB） |
 | GET | `/uploads/:file` | — | 图片静态访问 |
-| GET | `/api/clubs/:id/roster` | 社团（须本人） | 报名名单（含完整手机号） |
+| GET | `/api/clubs/:id/roster` | 社团（须本人） | 报名名单 `{ roster, counts }`：行含 `id/status/ageDays/red`，读取即触发超时自动拒绝 |
+| POST | `/api/clubs/:id/roster/decide` | 社团（须本人） | 处理报名 `{ ids, action: accept\|reject, reasonKey?\|reason? }`；拒绝必填原因（3 预设 + 自定义≤30 字），已处理行 409 |
 | GET | `/api/clubs/:id/members` | 社团（须本人） | 成员名册；支持 `?q=&status=&dept=`，返回 `{ members, depts, counts }` |
 | POST | `/api/clubs/:id/members` | 社团（须本人） | 手动新增成员（`name` + `phone` 必填，手机号社团内唯一） |
 | POST | `/api/clubs/:id/members/import` | 社团（须本人） | 从报名名单导入：`{ all:true }` 或 `{ rows:[i…] }` → `{ added, skipped }` |
@@ -91,7 +92,7 @@ npm start        # = npm run build && npm run server，访问 http://127.0.0.1:3
 | POST | `/api/events` | — | 埋点（impression / view_club / click_signup） |
 | GET | `/api/health` | — | 健康检查 |
 
-校验与错误：手机号 `/^1\d{10}$/`、密码 ≥6、重复手机号 409；未登录 401；越权（学生改社团、看名单）403。
+校验与错误：手机号 `/^1\d{10}$/`、密码 ≥6、重复手机号 409；未登录 401；越权（学生改社团、看名单）403；报名仅学生可提、重复报名 409、非招新中 409、拒绝报名缺原因 400、重复处理已定行 409。
 
 ## 安全说明
 
@@ -107,11 +108,12 @@ npm start        # = npm run build && npm run server，访问 http://127.0.0.1:3
 
 ## 数据与埋点
 
-- 持久层：`server/data/users.json` · `clubs.json` · `events.json`（原子写：tmp + rename）
-- 成员名册存在社团对象里：`clubs[].depts`（部门字典）+ `clubs[].members[]`（`name/phone/sid/wechat/dept/role/status/joinedAt/userId`）；报名流水 `roster[]` 与名册分开，报名者需手动「加入名册」
+- 持久层：`server/data/users.json` · `clubs.json` · `events.json`（原子写：tmp + rename）；`upkeep` 每天备份到 `server/data/backups/YYYY-MM-DD/`（当日一份、保留 14 天），并清理 30 天未被引用且超龄的上传图片
+- 成员名册存在社团对象里：`clubs[].depts`（部门字典）+ `clubs[].members[]`（`name/phone/sid/wechat/dept/role/status/joinedAt/userId`）
+- 报名流水 `roster[]` 与名册分开，报名者需手动「加入名册」；每行带 `status`（`pending` 待处理 / `accepted` 已通过 / `rejected` 已拒绝 / `withdrawn` 已撤回），读取名单时自动把超过 10 天的 `pending` 置为 `rejected`（固定原因「社团超时未处理」），≥3 天未处理给社团标红提醒
 - 成员状态：`active` 在册 / `pending` 预备 / `quit` 已退出（软删，可恢复）；学生端「我的」只展示未退出的身份
 - 图片：`server/uploads/`，由 `/api/uploads` 落盘、`/uploads/*` 静态访问；活动照片浏览器端先压到最长边 1600px，主页背景图压到 1920px（单张 ≤4MB）
-- 埋点 4 层：曝光 / 进主页 / 点报名 / 提交报名；社团工作台可看「进主页 → 点报名 → 提交」漏斗
+- 埋点 4 层：曝光 / 进主页 / 点报名 / 提交报名；曝光为卡片级（每社团每次进发现页最多计 1 次），浏览数不再落库（口径统一进事件流）；社团工作台可看「进主页 → 点报名 → 提交」漏斗
 - 社团封面插画为代码生成的扁平 SVG（`src/lib/art.js`，9 类场景），无外部图片依赖；活动照片与主页背景图是用户上传的真实图片
 - 主页背景图：社团在「编辑主页」上传，铺在主页顶部 240px 高，上叠深色渐变遮罩、名称与分类用白字；发现页卡片顶部同样使用该背景图，没有背景图时回退封面插画
 
@@ -129,7 +131,10 @@ c/
 ├── server/                 # Express 后端
 │   ├── index.js            # 挂载 /api + 托管 dist
 │   ├── auth.js             # scrypt 密码 + HMAC token
-│   ├── db.js               # JSON 文件库（原子写）
+│   ├── db.js               # JSON 文件库（原子写 + 互斥队列 + updateClubs/updateEvents）
+│   ├── signup-status.js    # 报名状态机常量与派生（超时自动拒绝/标红/排序/计数）
+│   ├── upkeep.js           # 每日备份（保留 14 天）+ 孤儿上传清理（30 天）
+│   ├── migrate-v2.mjs      # Q10 存量报名清空脚本（--apply）
 │   ├── data/               # 运行时生成，删除即「从零开始」
 │   ├── uploads/            # 活动照片（运行时生成，已 gitignore）
 │   └── routes/
@@ -157,6 +162,10 @@ c/
 ```
 
 ## 验证记录
+
+- 报名纪律与工程底线（P0）14 条 API 断言全部通过：报名仅学生可提、非招新中 409、按人/社去重、新报名 `pending`、浏览不落库、曝光卡片级进事件流、每日备份文件生成、存量报名清空 dry-run
+- 报名状态机（P1）24 条 API 断言全部通过：3 报名 pending、`id/ageDays/red` 派生、回拨 11 天自动拒绝（固定原因）、4 天标红、名单排序、拒绝缺原因 400、非法原因 400、重复处理 409「已被处理过」、批量含已处理事务不落盘、自定义原因≤30 字、`pendingCount`、导入只导已通过、学生/他社 403、提交口径=名单账本
+- 报名状态机 UI 冒烟 5/5 通过（无头浏览器）：工作台待办红点计数、名单页待处理/已通过 tab 计数与红标、行级拒绝弹窗（自定义原因）→ 已拒绝 tab 展示原因 → 待办数随之下降
 
 - 后端 24 条端到端断言全部通过（注册 / 登录 / 鉴权 / 报名 / 名单 / 统计 / 埋点）
 - 活动照片与简介 15 条断言全部通过（上传落盘、静态访问、非图片拒绝、路径过滤、9 张截断、简介超长拒绝、学生/匿名上传 403/401）
