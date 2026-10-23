@@ -11,6 +11,8 @@ import Dashboard from '../views/club/Dashboard.vue'
 import EditProfile from '../views/club/EditProfile.vue'
 import NewActivity from '../views/club/NewActivity.vue'
 import Roster from '../views/club/Roster.vue'
+import Members from '../views/club/Members.vue'
+import Settings from '../views/club/Settings.vue'
 
 const routes = [
   { path: '/', name: 'discover', component: Discover, meta: { title: '' } },
@@ -23,7 +25,9 @@ const routes = [
   { path: '/club-admin', name: 'dashboard', component: Dashboard, meta: { title: '工作台', club: true, hideTab: true } },
   { path: '/club-admin/edit', name: 'edit', component: EditProfile, meta: { title: '编辑主页', club: true, hideTab: true } },
   { path: '/club-admin/activity', name: 'activity', component: NewActivity, meta: { title: '发布活动', club: true, hideTab: true } },
-  { path: '/club-admin/roster', name: 'roster', component: Roster, meta: { title: '报名名单', club: true, hideTab: true } }
+  { path: '/club-admin/roster', name: 'roster', component: Roster, meta: { title: '报名名单', club: true, hideTab: true } },
+  { path: '/club-admin/members', name: 'members', component: Members, meta: { title: '成员管理', club: true, hideTab: true } },
+  { path: '/club-admin/settings', name: 'settings', component: Settings, meta: { title: '社团设置', club: true, hideTab: true } }
 ]
 
 const router = createRouter({ history: createWebHashHistory(), routes })

@@ -7,6 +7,21 @@ const router = Router()
 
 const uid = () => 'u' + Date.now().toString(36) + crypto.randomBytes(4).toString('hex')
 
+// 学生端：这个账号在哪些社团的名册里（只回在册/预备）
+function membershipsOf(u) {
+  if (u.role !== 'student') return []
+  const out = []
+  for (const c of loadClubs().clubs) {
+    for (const m of Array.isArray(c.members) ? c.members : []) {
+      if (m.status === 'quit') continue
+      const hit = m.userId ? m.userId === u.id : m.phone === u.phone
+      if (!hit) continue
+      out.push({ clubId: c.id, clubName: c.name, role: m.role || '成员', dept: m.dept || '', status: m.status })
+    }
+  }
+  return out
+}
+
 function publicUser(u) {
   const club = u.clubId ? loadClubs().clubs.find((c) => c.id === u.clubId) : null
   return {
@@ -15,7 +30,8 @@ function publicUser(u) {
     phone: u.phone,
     name: u.name || '',
     clubId: u.clubId || null,
-    clubName: club ? club.name : ''
+    clubName: club ? club.name : '',
+    memberships: membershipsOf(u)
   }
 }
 

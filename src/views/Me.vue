@@ -4,9 +4,10 @@ import { useRouter } from 'vue-router'
 import { useClubs } from '../store/clubs'
 
 const router = useRouter()
-const { state, logout, toast } = useClubs()
+const { state, logout, toast, MEMBER_STATUS } = useClubs()
 
 const user = computed(() => state.user)
+const memberships = computed(() => (state.user && state.user.memberships) || [])
 
 function signOut() {
   logout()
@@ -34,6 +35,14 @@ function signOut() {
         <div class="who">{{ user.name || ('手机尾号 ' + user.phone.slice(-4)) }}</div>
         <div class="role" style="margin-top: 4px">{{ user.phone }}</div>
       </div>
+      <div class="section-title" v-if="memberships.length">我的社团身份</div>
+      <div v-if="memberships.length" class="mem-list">
+        <router-link v-for="m in memberships" :key="m.clubId" :to="'/club/' + m.clubId" class="mem-item">
+          <span class="mem-club">{{ m.clubName }}</span>
+          <span class="mem-role">{{ m.role }}<template v-if="m.dept"> · {{ m.dept }}</template></span>
+          <span class="m-tag" :class="'st-' + m.status">{{ MEMBER_STATUS[m.status] }}</span>
+        </router-link>
+      </div>
       <div class="section-title">逛逛社团</div>
       <div class="quick">
         <router-link to="/">发现社团</router-link>
@@ -54,6 +63,8 @@ function signOut() {
         <router-link to="/club-admin/edit">编辑社团主页</router-link>
         <router-link to="/club-admin/activity">发布活动</router-link>
         <router-link to="/club-admin/roster">查看报名名单</router-link>
+        <router-link to="/club-admin/members">成员管理</router-link>
+        <router-link to="/club-admin/settings">社团设置</router-link>
       </div>
       <button class="btn ghost block" style="margin-top: 18px" @click="signOut">退出登录</button>
     </template>

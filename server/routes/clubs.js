@@ -15,7 +15,8 @@ function publicClub(c) {
     status: c.status,
     bg: c.bg || '',
     activities: c.activities || [],
-    rosterCount: (c.roster || []).length
+    rosterCount: (c.roster || []).length,
+    memberCount: (c.members || []).filter((m) => m.status !== 'quit').length
   }
 }
 

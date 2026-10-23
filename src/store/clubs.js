@@ -1,6 +1,6 @@
 // 数据层：API client + 响应式会话状态（后端 server/，JSON 文件库 + HMAC token 鉴权）
 import { reactive } from 'vue'
-import { CATEGORIES, STATUS_LABEL, ART_OPTIONS } from '../data/constants'
+import { CATEGORIES, STATUS_LABEL, ART_OPTIONS, MEMBER_STATUS } from '../data/constants'
 
 const API = '/api'
 const TOKEN_KEY = 'baituan.c.token'
@@ -11,6 +11,9 @@ export const state = reactive({
   clubs: [],
   club: null,
   roster: [],
+  members: [],
+  memberDepts: [],
+  memberCounts: { active: 0, pending: 0, quit: 0, total: 0 },
   lastSignup: null,
   loading: false,
   toast: ''
@@ -57,12 +60,42 @@ function downloadCSV(roster, clubName) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
+function fmtDate(ts) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  const p = (n) => String(n).padStart(2, '0')
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate())
+}
+
+// 导出成员名册（含部门/职务/状态/加入时间）
+function downloadMemberCSV(members, clubName) {
+  const rows = ['\uFEFF姓名,学号,手机号,微信号,部门,职务,状态,加入时间,备注']
+  members.forEach((m) => {
+    const cells = [
+      m.name, m.sid, m.phone, m.wechat, m.dept || '未分配',
+      m.role || '成员', MEMBER_STATUS[m.status] || m.status, fmtDate(m.joinedAt),
+      (m.note || '').replace(/,/g, '，')
+    ]
+    rows.push(cells.map((f) => '"' + String(f == null ? '' : f) + '"').join(','))
+  })
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = (clubName || 'club') + '-成员名册.csv'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 export function useClubs() {
   return {
     state,
     CATEGORIES,
     STATUS_LABEL,
     ART_OPTIONS,
+    MEMBER_STATUS,
 
     // ---- 账号 ----
     get user() { return state.user },
@@ -146,6 +179,54 @@ export function useClubs() {
       return api('/clubs/' + id + '/stats')
     },
 
+    // ---- 成员名册（社团端） ----
+    async fetchMembers(id, query) {
+      const qs = new URLSearchParams()
+      Object.entries(query || {}).forEach(([k, v]) => { if (v) qs.set(k, v) })
+      const suffix = qs.toString() ? '?' + qs.toString() : ''
+      const d = await api('/clubs/' + id + '/members' + suffix)
+      state.members = d.members
+      state.memberDepts = d.depts
+      state.memberCounts = d.counts
+      return d
+    },
+
+    async createMember(id, body) {
+      const d = await api('/clubs/' + id + '/members', { method: 'POST', body })
+      state.memberCounts = d.counts
+      return d.member
+    },
+
+    async importMembers(id, payload) {
+      const d = await api('/clubs/' + id + '/members/import', { method: 'POST', body: payload })
+      state.memberCounts = d.counts
+      return d
+    },
+
+    async updateMember(id, mid, patch) {
+      const d = await api('/clubs/' + id + '/members/' + mid, { method: 'PATCH', body: patch })
+      state.memberCounts = d.counts
+      return d.member
+    },
+
+    async bulkMembers(id, ids, patch) {
+      const d = await api('/clubs/' + id + '/members/bulk', { method: 'POST', body: { ids, patch } })
+      state.memberCounts = d.counts
+      return d
+    },
+
+    async removeMember(id, mid) {
+      const d = await api('/clubs/' + id + '/members/' + mid, { method: 'DELETE' })
+      state.memberCounts = d.counts
+      return d.member
+    },
+
+    async saveDepts(id, depts, renames) {
+      const d = await api('/clubs/' + id + '/depts', { method: 'PUT', body: { depts, renames } })
+      state.memberDepts = d.depts
+      return d
+    },
+
     // 上传一张活动照片（dataURL），返回可访问路径 /uploads/xxx.jpg
     async uploadPhoto(dataUrl) {
       const d = await api('/uploads', { method: 'POST', body: { data: dataUrl } })
@@ -160,6 +241,8 @@ export function useClubs() {
     // ---- 工具 ----
     maskPhone,
     downloadCSV,
+    downloadMemberCSV,
+    fmtDate,
     toast
   }
 }

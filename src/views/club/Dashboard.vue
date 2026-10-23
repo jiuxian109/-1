@@ -37,6 +37,7 @@ const club = computed(() => state.club)
 
       <div class="stat-grid">
         <div class="stat"><b>{{ club.rosterCount }}</b><span>报名人数</span></div>
+        <div class="stat"><b>{{ club.memberCount }}</b><span>在册成员</span></div>
         <div class="stat"><b>{{ club.activities.length }}</b><span>发布活动</span></div>
         <div class="stat"><b>{{ stats.view_club }}</b><span>主页浏览</span></div>
       </div>
@@ -49,6 +50,8 @@ const club = computed(() => state.club)
         <router-link to="/club-admin/edit">编辑社团主页</router-link>
         <router-link to="/club-admin/activity">发布活动</router-link>
         <router-link to="/club-admin/roster">查看报名名单（{{ club.rosterCount }}）</router-link>
+        <router-link to="/club-admin/members">成员管理（{{ club.memberCount }}）</router-link>
+        <router-link to="/club-admin/settings">社团设置</router-link>
       </div>
     </template>
     <p v-else class="empty">还没有绑定社团。</p>

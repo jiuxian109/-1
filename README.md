@@ -2,8 +2,8 @@
 
 面向**普通学生**和**社团管理员**的校园社团招新与风采平台（Vue 3 + Vite 前端 + Express 真实后端）。
 
-- 学生端：注册/登录 → 逛社团 → 看主页与「活动年册」→ 登录后报名
-- 社团端：注册即建社团 → 维护主页（可上传主页背景图）→ 发布活动（含真实照片上传与活动简介）→ 查看/导出报名名单 → 自查报名漏斗
+- 学生端：注册/登录 → 逛社团 → 看主页与「活动年册」→ 登录后报名 → 在「我的」看到自己的社团身份（社团 · 部门 · 职务）
+- 社团端：注册即建社团 → 维护主页（可上传主页背景图）→ 发布活动（含真实照片上传与活动简介）→ 查看/导出报名名单 → 管理成员名册（部门/职务/在册状态）→ 自查报名漏斗
 
 > 这是「百团」的 C 端工程（无全校管理方）。V1 完整版（含管理方审核台/数据台）见同级 `b/`。
 
@@ -56,10 +56,12 @@ npm start        # = npm run build && npm run server，访问 http://127.0.0.1:3
 | 学生 | `#/signup/:id` | 报名表单（姓名/学号/手机号/微信/一句话 + 同意勾选），需登录 |
 | 学生 | `#/success/:id?row=N` | 报名成功：花名册第 N 行（手机号脱敏） |
 | 二者 | `#/me` | 「我的」：身份卡 + 学生逛社团入口 / 社团工作台入口 + 退出 |
-| 社团 | `#/club-admin` | 工作台：报名人数/发布活动/主页浏览 + 报名漏斗 |
+| 社团 | `#/club-admin` | 工作台：报名人数/在册成员/发布活动/主页浏览 + 报名漏斗 |
 | 社团 | `#/club-admin/edit` | 编辑主页（名称/分类/主页背景图/插画/简介/微信/招新状态，预填现有值） |
 | 社团 | `#/club-admin/activity` | 发布活动（标题/日期/简介≤120 字/记录≤200 字 + 真实照片上传，最多 9 张） |
-| 社团 | `#/club-admin/roster` | 报名名单（完整手机号，仅社团可见）+ 导出 CSV |
+| 社团 | `#/club-admin/roster` | 报名名单（完整手机号，仅社团可见）+ 导出 CSV + 逐条/全部「加入名册」 |
+| 社团 | `#/club-admin/members` | 成员管理：统计、搜索、状态/部门筛选、添加、批量改状态/部门、行内编辑、导出 CSV |
+| 社团 | `#/club-admin/settings` | 社团设置：维护部门字典（改名/删除，删除后成员落「未分配」） |
 
 ## API
 
@@ -69,7 +71,7 @@ npm start        # = npm run build && npm run server，访问 http://127.0.0.1:3
 | --- | --- | --- | --- |
 | POST | `/api/auth/register` | — | 注册；`role=student` 或 `club`（club 需 `clubName`，返回 `clubId`） |
 | POST | `/api/auth/login` | — | 手机号 + 密码，返回 `{ token, user }` |
-| GET | `/api/auth/me` | 任意登录 | 当前用户（社团回带 `clubName`） |
+| GET | `/api/auth/me` | 任意登录 | 当前用户（社团回带 `clubName`，学生回带 `memberships`） |
 | GET | `/api/clubs` | — | 社团列表 |
 | GET | `/api/clubs/:id` | — | 社团详情（浏览数 +1） |
 | POST | `/api/clubs/:id/signup` | 学生 | 报名，返回 `{ row }` 名册行号 |
@@ -78,6 +80,13 @@ npm start        # = npm run build && npm run server，访问 http://127.0.0.1:3
 | POST | `/api/uploads` | 社团 | 上传图片（活动照片 / 主页背景图通用）：`{ data: dataURL }` → `{ url }`（仅 jpeg/png/webp，单张 ≤4MB） |
 | GET | `/uploads/:file` | — | 图片静态访问 |
 | GET | `/api/clubs/:id/roster` | 社团（须本人） | 报名名单（含完整手机号） |
+| GET | `/api/clubs/:id/members` | 社团（须本人） | 成员名册；支持 `?q=&status=&dept=`，返回 `{ members, depts, counts }` |
+| POST | `/api/clubs/:id/members` | 社团（须本人） | 手动新增成员（`name` + `phone` 必填，手机号社团内唯一） |
+| POST | `/api/clubs/:id/members/import` | 社团（须本人） | 从报名名单导入：`{ all:true }` 或 `{ rows:[i…] }` → `{ added, skipped }` |
+| POST | `/api/clubs/:id/members/bulk` | 社团（须本人） | 批量修改：`{ ids, patch:{ dept?, role?, status? } }` |
+| PATCH | `/api/clubs/:id/members/:mid` | 社团（须本人） | 改单个成员（部门/职务/状态/备注），`status=active` 即可恢复 |
+| DELETE | `/api/clubs/:id/members/:mid` | 社团（须本人） | 移出成员（软删：`status=quit`，记录保留） |
+| PUT | `/api/clubs/:id/depts` | 社团（须本人） | 保存部门字典：`{ depts, renames:[{ from, to }] }`，删除的部门成员落「未分配」 |
 | GET | `/api/clubs/:id/stats` | 社团（须本人） | 报名漏斗：进主页/点报名/提交 |
 | POST | `/api/events` | — | 埋点（impression / view_club / click_signup） |
 | GET | `/api/health` | — | 健康检查 |
@@ -93,11 +102,14 @@ npm start        # = npm run build && npm run server，访问 http://127.0.0.1:3
   ```
   **生产环境务必设置 `BAITUAN_SECRET`**，默认值仅用于本地开发。
 - 报名名单（完整手机号）仅社团本人可读；面向学生公开的页面手机号一律脱敏
+- 成员名册（含手机号）同样仅社团本人可读：学生 token 调 `/members`、`/depts` 一律 403，匿名 401
 - 这是教学/演示级实现，未做：短信验证码、找回密码、令牌刷新、限流、CSRF 防护
 
 ## 数据与埋点
 
 - 持久层：`server/data/users.json` · `clubs.json` · `events.json`（原子写：tmp + rename）
+- 成员名册存在社团对象里：`clubs[].depts`（部门字典）+ `clubs[].members[]`（`name/phone/sid/wechat/dept/role/status/joinedAt/userId`）；报名流水 `roster[]` 与名册分开，报名者需手动「加入名册」
+- 成员状态：`active` 在册 / `pending` 预备 / `quit` 已退出（软删，可恢复）；学生端「我的」只展示未退出的身份
 - 图片：`server/uploads/`，由 `/api/uploads` 落盘、`/uploads/*` 静态访问；活动照片浏览器端先压到最长边 1600px，主页背景图压到 1920px（单张 ≤4MB）
 - 埋点 4 层：曝光 / 进主页 / 点报名 / 提交报名；社团工作台可看「进主页 → 点报名 → 提交」漏斗
 - 社团封面插画为代码生成的扁平 SVG（`src/lib/art.js`，9 类场景），无外部图片依赖；活动照片与主页背景图是用户上传的真实图片
@@ -123,16 +135,17 @@ c/
 │   └── routes/
 │       ├── auth.js         # register / login / me
 │       ├── clubs.js        # 列表 / 详情 / 报名 / 编辑 / 活动 / 名单 / 统计
+│       ├── members.js      # 成员名册 / 导入 / 批量 / 部门字典
 │       ├── uploads.js      # 活动照片上传（dataURL → 文件）
 │       └── events.js       # 埋点
 ├── dist/                   # 构建产物
 └── src/
     ├── main.js             # 启动时先恢复会话再挂载
-    ├── router/index.js     # 11 条路由 + 登录守卫
+    ├── router/index.js     # 13 条路由 + 登录守卫
     ├── App.vue
     ├── assets/styles.css
     ├── components/         # ClubArt / ClubCard / StatusTag / TopBar / TabBar
-    ├── data/constants.js   # CATEGORIES / STATUS_LABEL / ART_OPTIONS
+    ├── data/constants.js   # CATEGORIES / STATUS_LABEL / ART_OPTIONS / MEMBER_STATUS
     ├── lib/art.js          # 封面插画 SVG
     ├── lib/image.js        # 浏览器端图片压缩（活动照片 / 主页背景图共用）
     ├── store/clubs.js      # API client 单例（token + 请求封装）
@@ -140,6 +153,7 @@ c/
         ├── Discover.vue  ClubDetail.vue  Signup.vue  Success.vue  Me.vue
         ├── Login.vue  Register.vue
         └── club/         Dashboard.vue  EditProfile.vue  NewActivity.vue  Roster.vue
+                          Members.vue  Settings.vue
 ```
 
 ## 验证记录
@@ -150,3 +164,6 @@ c/
 - CDP 真实上传链路验证通过：选择本地文件 → 压缩预览 → 上传 → 发布活动 → 社团主页渲染真实照片与简介
 - 主页背景图 10 条 API 断言全部通过（新社团默认空 `bg`、上传落盘、静态访问 200、PUT/GET 一致、非法路径被清空、列表带 `bg`、学生改他人主页 403）
 - 主页背景图 13 条 CDP 断言全部通过（编辑页上传→预览→保存→后端落库→主页 `.hero-bg` 内联背景图、白字名称、240px 高、渐变遮罩、发现页卡片同步生效）
+- 成员管理 27 条 API 断言全部通过（空名册、部门增删改、手动新增、重复手机号 409、缺手机号 400、非法部门 400、搜索、状态筛选、导入报名、重复导入全跳过、学生 `me` 带身份、改状态/职务、批量改部门、部门重命名与成员跟随、删部门迁移到未分配、软删与恢复、学生/匿名越权 403/401、详情 `memberCount`）
+- 成员管理 22 条 CDP 断言全部通过（工作台四格统计与两个入口、名册列表与统计、状态 chips、搜索命中与清空、行内编辑预填、批量条「设为预备」后统计同步、设置页新增并落库部门、学生「我的」显示社团身份与状态 tag）
+- 学生端身份随状态同步：成员记录改为已退出后 `/api/auth/me` 的 `memberships` 为空、社团 `memberCount` 减 1，恢复在册后回到原值

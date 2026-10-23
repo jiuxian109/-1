@@ -14,3 +14,10 @@ export const ART_OPTIONS = [
   { v: 'science', label: '天文' }, { v: 'hanfu', label: '汉服' },
   { v: 'stage', label: '舞台' }
 ]
+
+// 成员状态（与后端 server/routes/members.js 的 MEMBER_STATUSES 一致）
+export const MEMBER_STATUS = {
+  active: '在册',
+  pending: '预备',
+  quit: '已退出'
+}

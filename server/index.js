@@ -4,6 +4,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import authRoutes from './routes/auth.js'
 import clubRoutes from './routes/clubs.js'
+import memberRoutes from './routes/members.js'
 import eventRoutes from './routes/events.js'
 import uploadRoutes from './routes/uploads.js'
 
@@ -18,6 +19,7 @@ app.use(cors())
 app.use(express.json({ limit: '12mb' }))
 
 app.use('/api/auth', authRoutes)
+app.use('/api/clubs', memberRoutes) // /:id/members*、/:id/depts
 app.use('/api/clubs', clubRoutes)
 app.use('/api/events', eventRoutes)
 app.use('/api/uploads', uploadRoutes)
