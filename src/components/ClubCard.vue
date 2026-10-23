@@ -5,9 +5,10 @@ import StatusTag from './StatusTag.vue'
 const props = defineProps({ club: { type: Object, required: true } })
 
 function thumbs(act) {
-  const n = Math.min(act.photos || 1, 3)
-  return Array.from({ length: n }, (_, i) => ({ type: act.type, seed: (act.seed || 'x') + i }))
+  return Array.isArray(act.photos) ? act.photos.filter(Boolean).slice(0, 3) : []
 }
+
+const firstAct = () => (props.club.activities || [])[0] || null
 </script>
 
 <template>
@@ -21,8 +22,13 @@ function thumbs(act) {
       <p class="club-card-intro">{{ club.intro }}</p>
       <div class="recent">
         <div class="recent-photos">
-          <template v-for="act in club.activities.slice(0, 1)" :key="act.id">
-            <div v-for="t in thumbs(act)" :key="t.seed" class="ph"><ClubArt :type="t.type" :seed="t.seed" /></div>
+          <template v-if="firstAct()">
+            <div v-for="(src, i) in thumbs(firstAct())" :key="src + i" class="ph">
+              <img :src="src" alt="" loading="lazy" />
+            </div>
+            <div v-if="!thumbs(firstAct()).length" class="ph">
+              <ClubArt :type="club.art" :seed="firstAct().id" />
+            </div>
           </template>
         </div>
         <StatusTag :status="club.status" />

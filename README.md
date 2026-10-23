@@ -3,7 +3,7 @@
 面向**普通学生**和**社团管理员**的校园社团招新与风采平台（Vue 3 + Vite 前端 + Express 真实后端）。
 
 - 学生端：注册/登录 → 逛社团 → 看主页与「活动年册」→ 登录后报名
-- 社团端：注册即建社团 → 维护主页 → 发布活动 → 查看/导出报名名单 → 自查报名漏斗
+- 社团端：注册即建社团 → 维护主页 → 发布活动（含真实照片上传与活动简介）→ 查看/导出报名名单 → 自查报名漏斗
 
 > 这是「百团」的 C 端工程（无全校管理方）。V1 完整版（含管理方审核台/数据台）见同级 `b/`。
 
@@ -58,7 +58,7 @@ npm start        # = npm run build && npm run server，访问 http://127.0.0.1:3
 | 二者 | `#/me` | 「我的」：身份卡 + 学生逛社团入口 / 社团工作台入口 + 退出 |
 | 社团 | `#/club-admin` | 工作台：报名人数/发布活动/主页浏览 + 报名漏斗 |
 | 社团 | `#/club-admin/edit` | 编辑主页（名称/分类/插画/简介/微信/招新状态，预填现有值） |
-| 社团 | `#/club-admin/activity` | 发布活动（标题/日期/画面/记录≤200 字/照片数 1–9 实时预览） |
+| 社团 | `#/club-admin/activity` | 发布活动（标题/日期/简介≤120 字/记录≤200 字 + 真实照片上传，最多 9 张） |
 | 社团 | `#/club-admin/roster` | 报名名单（完整手机号，仅社团可见）+ 导出 CSV |
 
 ## API
@@ -74,7 +74,9 @@ npm start        # = npm run build && npm run server，访问 http://127.0.0.1:3
 | GET | `/api/clubs/:id` | — | 社团详情（浏览数 +1） |
 | POST | `/api/clubs/:id/signup` | 学生 | 报名，返回 `{ row }` 名册行号 |
 | PUT | `/api/clubs/:id` | 社团（须本人） | 更新主页 6 字段 |
-| POST | `/api/clubs/:id/activities` | 社团（须本人） | 发布活动 |
+| POST | `/api/clubs/:id/activities` | 社团（须本人） | 发布活动（`intro` ≤120 字、`photos` 为 `/uploads/*` 路径数组、最多 9 张） |
+| POST | `/api/uploads` | 社团 | 上传活动照片：`{ data: dataURL }` → `{ url }`（仅 jpeg/png/webp，单张 ≤4MB） |
+| GET | `/uploads/:file` | — | 活动照片静态访问 |
 | GET | `/api/clubs/:id/roster` | 社团（须本人） | 报名名单（含完整手机号） |
 | GET | `/api/clubs/:id/stats` | 社团（须本人） | 报名漏斗：进主页/点报名/提交 |
 | POST | `/api/events` | — | 埋点（impression / view_club / click_signup） |
@@ -96,8 +98,9 @@ npm start        # = npm run build && npm run server，访问 http://127.0.0.1:3
 ## 数据与埋点
 
 - 持久层：`server/data/users.json` · `clubs.json` · `events.json`（原子写：tmp + rename）
+- 活动照片：`server/uploads/`，由 `/api/uploads` 落盘、`/uploads/*` 静态访问；浏览器端先压到最长边 1600px 的 JPEG 再上传（单张 ≤4MB，最多 9 张）
 - 埋点 4 层：曝光 / 进主页 / 点报名 / 提交报名；社团工作台可看「进主页 → 点报名 → 提交」漏斗
-- 封面插画为代码生成的扁平 SVG（`src/lib/art.js`，9 类场景），无外部图片依赖
+- 社团封面插画为代码生成的扁平 SVG（`src/lib/art.js`，9 类场景），无外部图片依赖；活动照片是用户上传的真实图片
 
 ## 设计
 
@@ -115,9 +118,11 @@ c/
 │   ├── auth.js             # scrypt 密码 + HMAC token
 │   ├── db.js               # JSON 文件库（原子写）
 │   ├── data/               # 运行时生成，删除即「从零开始」
+│   ├── uploads/            # 活动照片（运行时生成，已 gitignore）
 │   └── routes/
 │       ├── auth.js         # register / login / me
 │       ├── clubs.js        # 列表 / 详情 / 报名 / 编辑 / 活动 / 名单 / 统计
+│       ├── uploads.js      # 活动照片上传（dataURL → 文件）
 │       └── events.js       # 埋点
 ├── dist/                   # 构建产物
 └── src/
@@ -138,4 +143,6 @@ c/
 ## 验证记录
 
 - 后端 24 条端到端断言全部通过（注册 / 登录 / 鉴权 / 报名 / 名单 / 统计 / 埋点）
+- 活动照片与简介 15 条断言全部通过（上传落盘、静态访问、非图片拒绝、路径过滤、9 张截断、简介超长拒绝、学生/匿名上传 403/401）
 - 前端 11 条路由无头浏览器渲染通过；CDP 真实交互验证通过：编辑页预填、学生报名提交、社团登录、学生注册、未登录报名被守卫拦截
+- CDP 真实上传链路验证通过：选择本地文件 → 压缩预览 → 上传 → 发布活动 → 社团主页渲染真实照片与简介

@@ -81,18 +81,26 @@ router.put('/:id', (req, res) => {
 // 社团端：发布活动
 router.post('/:id/activities', (req, res) => {
   if (!requireClub(req, res)) return
-  const { title, date, note, type, photos } = req.body || {}
+  const { title, date, intro, note, photos } = req.body || {}
   if (!title || !date) return res.status(400).json({ error: '请填写活动标题和日期' })
+  if (intro && String(intro).length > 120) return res.status(400).json({ error: '活动简介不超过 120 字' })
+  if (note && String(note).length > 200) return res.status(400).json({ error: '活动记录不超过 200 字' })
+
+  // 只接受本服务上传接口产出的照片路径，最多 9 张
+  const list = Array.isArray(photos)
+    ? photos.filter((u) => typeof u === 'string' && /^\/uploads\/[A-Za-z0-9._-]+$/.test(u)).slice(0, 9)
+    : []
+
   const data = loadClubs()
   const c = data.clubs.find((x) => x.id === req.params.id)
+  if (!c) return res.status(404).json({ error: '社团不存在' })
   const act = {
     id: 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     title,
     date,
+    intro: intro || '',
     note: note || '',
-    type: type || 'dance',
-    photos: Math.min(9, Math.max(1, parseInt(photos, 10) || 3)),
-    seed: Date.now().toString(36)
+    photos: list
   }
   c.activities = c.activities || []
   c.activities.unshift(act)

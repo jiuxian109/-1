@@ -30,9 +30,8 @@ watch(() => route.params.id, load)
 
 const club = computed(() => state.club)
 
-function photoSeeds(act) {
-  const n = Math.min(act.photos || 1, 9)
-  return Array.from({ length: n }, (_, i) => ({ type: act.type, seed: (act.seed || 'x') + i }))
+function photosOf(act) {
+  return Array.isArray(act.photos) ? act.photos.filter(Boolean) : []
 }
 
 function monthOf(date) {
@@ -80,13 +79,17 @@ function join() {
         <div v-for="(acts, month) in yearbook" :key="month" class="month">
           <div class="month-title">{{ month }}</div>
           <article v-for="act in acts" :key="act.id" class="act-card">
-            <div class="act-grid">
-              <div v-for="t in photoSeeds(act)" :key="t.seed" class="ph"><ClubArt :type="t.type" :seed="t.seed" /></div>
+            <div v-if="photosOf(act).length" class="act-grid">
+              <div v-for="(src, i) in photosOf(act)" :key="src + i" class="ph">
+                <img :src="src" :alt="act.title + ' 活动照片 ' + (i + 1)" loading="lazy" />
+              </div>
             </div>
+            <div v-else class="act-fallback"><ClubArt :type="club.art" :seed="act.id" /></div>
             <div class="act-body">
               <h3>{{ act.title }}</h3>
               <div class="act-date">{{ act.date }}</div>
-              <p class="act-note">{{ act.note }}</p>
+              <p v-if="act.intro" class="act-intro">{{ act.intro }}</p>
+              <p v-if="act.note" class="act-note">{{ act.note }}</p>
             </div>
           </article>
         </div>

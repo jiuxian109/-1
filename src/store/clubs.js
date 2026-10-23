@@ -146,6 +146,12 @@ export function useClubs() {
       return api('/clubs/' + id + '/stats')
     },
 
+    // 上传一张活动照片（dataURL），返回可访问路径 /uploads/xxx.jpg
+    async uploadPhoto(dataUrl) {
+      const d = await api('/uploads', { method: 'POST', body: { data: dataUrl } })
+      return d.url
+    },
+
     // ---- 埋点 ----
     track(type, clubId) {
       api('/events', { method: 'POST', body: { type, clubId: clubId || null } }).catch(() => {})
