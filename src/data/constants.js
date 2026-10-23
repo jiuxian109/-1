@@ -21,3 +21,18 @@ export const MEMBER_STATUS = {
   pending: '预备',
   quit: '已退出'
 }
+
+// 报名状态（与后端 server/signup-status.js 的 SIGNUP_STATUSES 一致）
+export const SIGNUP_STATUS = {
+  pending: '待处理',
+  accepted: '已通过',
+  rejected: '已拒绝',
+  withdrawn: '已撤回'
+}
+
+// 拒绝报名预设原因（与后端 server/signup-status.js 的 REJECT_PRESETS 一致）
+export const REJECT_REASONS = [
+  { key: 'full', label: '名额已满' },
+  { key: 'mismatch', label: '条件不符' },
+  { key: 'closed', label: '暂停招新' }
+]

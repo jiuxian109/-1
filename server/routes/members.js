@@ -196,6 +196,9 @@ router.post('/:id/members/import', (req, res) => {
     return res.status(400).json({ error: '请指定要导入的报名记录' })
   }
 
+  // V2 状态机：只有「已通过」的报名才能转入名册（无 status 的历史数据兜底视为已通过）
+  rows = rows.filter((r) => (r.status || 'accepted') === 'accepted')
+
   let added = 0
   let skipped = 0
   for (const r of rows) {

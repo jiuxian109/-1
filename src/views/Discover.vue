@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useClubs } from '../store/clubs'
 import ClubCard from '../components/ClubCard.vue'
 
@@ -18,8 +18,17 @@ const filtered = computed(() => {
   })
 })
 
+// 口径统一：impression = 卡片级曝光，每个社团每次进入发现页最多计 1 次
+const seen = new Set()
+watch(filtered, (list) => {
+  for (const c of list) {
+    if (seen.has(c.id)) continue
+    seen.add(c.id)
+    track('impression', c.id)
+  }
+}, { immediate: true })
+
 onMounted(async () => {
-  track('impression')
   try {
     await fetchClubs()
   } catch (e) {

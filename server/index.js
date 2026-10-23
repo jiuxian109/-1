@@ -7,6 +7,10 @@ import clubRoutes from './routes/clubs.js'
 import memberRoutes from './routes/members.js'
 import eventRoutes from './routes/events.js'
 import uploadRoutes from './routes/uploads.js'
+import { startUpkeep } from './upkeep.js'
+
+// 启动即执行一次维护（当日备份 + 上传回收），此后每 24h 一次
+startUpkeep()
 
 const app = express()
 const PORT = process.env.PORT || 3001

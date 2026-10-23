@@ -69,8 +69,7 @@ router.post('/register', (req, res) => {
       bg: '',
       approved: true,
       activities: [],
-      roster: [],
-      viewCount: 0
+      roster: []
     }
     clubs.nextClub = 'c' + (parseInt(clubs.nextClub.slice(1), 10) + 1)
     clubs.clubs.push(club)

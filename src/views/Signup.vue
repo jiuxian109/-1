@@ -5,7 +5,7 @@ import { useClubs } from '../store/clubs'
 
 const route = useRoute()
 const router = useRouter()
-const { state, fetchClub, signup, track } = useClubs()
+const { state, fetchClub, signup } = useClubs()
 
 const loading = ref(true)
 const err = ref('')
@@ -29,7 +29,6 @@ async function submit() {
   submitErr.value = ''
   try {
     const row = await signup(club.value.id, { ...form })
-    track('submit_signup', club.value.id)
     router.push('/success/' + club.value.id + '?row=' + row)
   } catch (e) {
     submitErr.value = e.message
@@ -46,7 +45,7 @@ async function submit() {
       <h2 style="font-size: 20px; font-weight: 800; margin-bottom: 4px">加入 {{ club.name }}</h2>
       <p style="font-size: 13px; color: var(--muted); margin-bottom: 18px">提交后，你的名字会写入社团花名册。</p>
 
-      <form @submit.prevent="submit">
+      <form v-if="club.status === 'open'" @submit.prevent="submit">
         <div class="field">
           <label for="f-name">姓名</label>
           <input id="f-name" v-model="form.name" placeholder="你的真实姓名" />
@@ -75,6 +74,7 @@ async function submit() {
         <p v-if="submitErr" class="err">{{ submitErr }}</p>
         <button type="submit" class="btn block" :disabled="busy">{{ busy ? '提交中…' : '提交报名' }}</button>
       </form>
+      <p v-else class="empty">该社团当前不在招新，暂不能报名。</p>
     </template>
     <p v-else class="empty">社团不存在或已下架。</p>
   </div>

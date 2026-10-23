@@ -239,6 +239,12 @@ img { display: block; max-width: 100%; }
   font-weight: 600; font-size: 15px;
 }
 .quick a::after { content: "›"; font-size: 20px; color: var(--muted); }
+.quick .todo-link::after { display: none; }
+.quick .red-dot {
+  font-style: normal; min-width: 22px; height: 22px; padding: 0 7px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--end); color: #fff; border-radius: 999px; font-size: 12px; font-weight: 700;
+}
 
 /* ============ 名单 ============ */
 .roster-list { display: flex; flex-direction: column; gap: 10px; }

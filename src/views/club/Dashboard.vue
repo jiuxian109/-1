@@ -49,7 +49,9 @@ const club = computed(() => state.club)
       <div class="quick">
         <router-link to="/club-admin/edit">编辑社团主页</router-link>
         <router-link to="/club-admin/activity">发布活动</router-link>
-        <router-link to="/club-admin/roster">查看报名名单（{{ club.rosterCount }}）</router-link>
+        <router-link to="/club-admin/roster" class="todo-link">
+          处理报名待办<i v-if="club.pendingCount > 0" class="red-dot">{{ club.pendingCount }}</i>
+        </router-link>
         <router-link to="/club-admin/members">成员管理（{{ club.memberCount }}）</router-link>
         <router-link to="/club-admin/settings">社团设置</router-link>
       </div>

@@ -1,6 +1,6 @@
 // 数据层：API client + 响应式会话状态（后端 server/，JSON 文件库 + HMAC token 鉴权）
 import { reactive } from 'vue'
-import { CATEGORIES, STATUS_LABEL, ART_OPTIONS, MEMBER_STATUS } from '../data/constants'
+import { CATEGORIES, STATUS_LABEL, ART_OPTIONS, MEMBER_STATUS, SIGNUP_STATUS, REJECT_REASONS } from '../data/constants'
 
 const API = '/api'
 const TOKEN_KEY = 'baituan.c.token'
@@ -11,6 +11,7 @@ export const state = reactive({
   clubs: [],
   club: null,
   roster: [],
+  rosterCounts: { pending: 0, accepted: 0, rejected: 0, withdrawn: 0 },
   members: [],
   memberDepts: [],
   memberCounts: { active: 0, pending: 0, quit: 0, total: 0 },
@@ -44,9 +45,9 @@ function maskPhone(p) {
 }
 
 function downloadCSV(roster, clubName) {
-  const rows = ['\uFEFF姓名,学号,手机号,微信号,报名理由']
+  const rows = ['\uFEFF姓名,学号,手机号,微信号,报名理由,状态']
   roster.forEach((r) => {
-    const cells = [r.name, r.sid, r.phone, r.wechat, (r.why || '').replace(/,/g, '，')]
+    const cells = [r.name, r.sid, r.phone, r.wechat, (r.why || '').replace(/,/g, '，'), SIGNUP_STATUS[r.status] || r.status || '']
     rows.push(cells.map((f) => '"' + String(f) + '"').join(','))
   })
   const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8' })
@@ -96,6 +97,8 @@ export function useClubs() {
     STATUS_LABEL,
     ART_OPTIONS,
     MEMBER_STATUS,
+    SIGNUP_STATUS,
+    REJECT_REASONS,
 
     // ---- 账号 ----
     get user() { return state.user },
@@ -172,7 +175,15 @@ export function useClubs() {
     async fetchRoster(id) {
       const d = await api('/clubs/' + id + '/roster')
       state.roster = d.roster
+      state.rosterCounts = d.counts
       return d.roster
+    },
+
+    // 批量处理报名：action = 'accept' | 'reject'，拒绝需 reasonKey 或 reason
+    async decideRoster(id, payload) {
+      const d = await api('/clubs/' + id + '/roster/decide', { method: 'POST', body: payload })
+      state.rosterCounts = d.counts
+      return d
     },
 
     async fetchStats(id) {
